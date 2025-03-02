@@ -64,7 +64,8 @@ node
 newnode
 ```
 重点修改的如下：
-
+> k8s_image_url: k8s 初始化的时候拉取镜像，一般不用修改
+>
 > k8s_extra_ips:  kubrenetes master 节点信息(预留)，目的为了后期方便扩容 master 节点
 >
 > nic:  keepalived 调用的本地网卡的设备
@@ -94,7 +95,7 @@ tmp_dir: '/opt/k8s-install/join'                                                
 docker_data_dir: '/var/lib/docker'                                                    # docker 数据存储路径
 k8s_version: 'v1.23.0'                                                                # kubrenetes 初始化定义的版本信息
 kubelet_data_dir: '/var/lib/kubelet'                                                  # kubelet (pod) 数据存储路径
-Other_URL: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
+k8s_image_url: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
 k8s_extra_ips:                                                                        # kubrenetes master 节点信息(预留),并不是当前 hosts.ini 文件定义的,目的是为了后期扩容 master
   - "10.0.0.150"
   - "10.0.0.151"
@@ -198,7 +199,8 @@ root@ubuntu:~# ansible -i hosts.ini etcd -m copy -a "src=./roles/etcd/files/etcd
 ```
 
 重点修改的如下：
-
+> k8s_image_url: k8s 初始化的时候拉取镜像，一般不用修改
+>
 > k8s_extra_ips:  kubrenetes master 节点信息(预留)，目的为了后期方便扩容 master 节点
 >
 > nic:  keepalived 调用的本地网卡的设备
@@ -228,7 +230,7 @@ tmp_dir: '/opt/k8s-install/join'                                                
 docker_data_dir: '/var/lib/docker'                                                    # docker 数据存储路径
 k8s_version: 'v1.23.0'                                                                # kubrenetes 初始化定义的版本信息
 kubelet_data_dir: '/var/lib/kubelet'                                                  # kubelet (pod) 数据存储路径
-Other_URL: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
+k8s_image_url: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
 k8s_extra_ips:                                                                        # kubrenetes master 节点信息(预留),并不是当前 hosts.ini 文件定义的,目的是为了后期扩容 master
   - "10.0.0.150"
   - "10.0.0.151"

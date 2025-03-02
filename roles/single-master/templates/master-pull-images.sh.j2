@@ -15,7 +15,7 @@ images=(
 )
 
 for imageName in ${images[@]} ; do
-    docker pull {{ Other_URL }}/$imageName
-    docker tag {{ Other_URL }}/$imageName {{ GCR_URL }}/$imageName
-    docker rmi {{ Other_URL }}/$imageName
+    docker pull {{ k8s_image_url }}/$imageName
+    docker tag {{ k8s_image_url }}/$imageName {{ GCR_URL }}/$imageName
+    docker rmi {{ k8s_image_url }}/$imageName
 done

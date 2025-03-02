@@ -13,7 +13,7 @@ tmp_dir: '/opt/k8s-install/join'                                                
 docker_data_dir: '/var/lib/docker'                                                    # docker 数据存储路径
 k8s_version: 'v1.23.0'                                                                # kubrenetes 初始化定义的版本信息
 kubelet_data_dir: '/var/lib/kubelet'                                                  # kubelet (pod) 数据存储路径
-Other_URL: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
+k8s_image_url: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
 k8s_extra_ips:                                                                        # kubrenetes master 节点信息(预留),并不是当前 hosts.ini 文件定义的,目的是为了后期扩容 master
   - "10.0.0.150"
   - "10.0.0.151"
