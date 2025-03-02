@@ -1,0 +1,53 @@
+# --- https://v1-17.docs.kubernetes.io/zh/docs/setup/production-environment/tools/kubeadm/control-plane-flags/
+# --- kubeadm config print init-defaults --component-configs KubeProxyConfiguration
+# --- kubeadm config view
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: 0.0.0.0
+  bindPort: 6443
+apiServer:
+  certSANs:
+  - {{ api_vip_hosts }}
+{% for host in groups['master'] %}
+  - {{ host }}
+  - {{ hostvars[host].ansible_default_ipv4.address }}
+{% endfor %}
+  - {{ vip }}
+  - 127.0.0.1
+{% if k8s_extra_ips is defined and k8s_extra_ips|length > 0 %}
+{% for ip in k8s_extra_ips %}
+  - {{ ip }}
+{% endfor %}
+{% endif %}
+---
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+kubernetesVersion: {{ k8s_version }}
+controlPlaneEndpoint: "{{ api_vip_hosts }}:{{ lb_port }}"
+imageRepository: "{{ Other_URL }}"
+networking:
+  dnsDomain: cluster.local
+  podSubnet: {{ pod_cidr }}
+  serviceSubnet: {{ service_cidr }}
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+scheduler:
+  extraArgs:
+    bind-address: "0.0.0.0"
+    feature-gates: "ExpandCSIVolumes=true,CSIStorageCapacity=true,RotateKubeletServerCertificate=true,TTLAfterFinished=true"
+
+controllerManager:
+  extraArgs:
+    bind-address: "0.0.0.0"
+  extraArgs:
+    feature-gates: "ExpandCSIVolumes=true,CSIStorageCapacity=true,RotateKubeletServerCertificate=true,TTLAfterFinished=true"
+
+apiServer:
+  extraArgs:
+    feature-gates: "ExpandCSIVolumes=true,CSIStorageCapacity=true,RotateKubeletServerCertificate=true,TTLAfterFinished=true"
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: ipvs

@@ -1,0 +1,29 @@
+- name: install package
+  package:
+    name:
+      - ntp
+      - ntpdate
+      - rsync
+      - bash-completion
+      - net-tools
+      - wget
+      - gcc
+      - lrzsz
+      - vim
+      - unzip
+      - make
+      - libssl-dev
+      - lvm2
+      - conntrack
+      - ipvsadm
+      - ipset
+      - jq
+      - curl
+      - sysstat
+      - libseccomp2
+      - zip
+    state: latest
+  register: result
+  until: result is succeeded
+  retries: 5
+  delay: 30

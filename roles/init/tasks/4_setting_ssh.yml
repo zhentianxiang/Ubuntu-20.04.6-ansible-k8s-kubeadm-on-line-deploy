@@ -1,0 +1,17 @@
+---
+- name: update ssh config parameter UseDNS
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "^#UseDNS yes"
+    replace: "UseDNS no"
+
+- name: update ssh config parameter GSSAPIAuthentication 
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "^GSSAPIAuthentication yes"
+    replace: "GSSAPIAuthentication no"
+
+- name: restart sshd
+  systemd:
+    name: sshd
+    state: restarted

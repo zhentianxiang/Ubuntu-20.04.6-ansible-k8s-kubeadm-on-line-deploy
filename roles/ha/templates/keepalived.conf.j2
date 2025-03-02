@@ -1,0 +1,43 @@
+{% if ha_name == 'ha-master' %}
+{% set role = 'MASTER' %}
+{% set priority = 100 %}
+{% else %}
+{% set role = 'BACKUP' %}
+{% set priority = 90 - (loop.index | default(0)) %}  {# 如果 loop.index 未定义，默认为 0 #}
+{% endif %}
+
+! Configuration File for keepalived
+global_defs {
+    notification_email {
+        {% for email in notification_emails %}
+        {{ email }}
+        {% endfor %}
+    }
+    notification_email_from Alexandre.Cassen@firewall.loc
+    smtp_server {{ smtp_server }}
+    smtp_connect_timeout {{ smtp_connect_timeout }}
+    router_id K8S_{{ inventory_hostname }}
+}
+
+vrrp_script check_service {
+script "/etc/keepalived/check_apiservice.sh"
+interval 3
+}
+
+vrrp_instance VI_1 {
+state {{ role }}
+interface {{ nic }}
+virtual_router_id {{ Virtual_Router_ID }} # VRRP 路由 ID实例，每个实例是唯一的
+priority {{ priority }} # 动态优先级
+advert_int 1 # 指定VRRP 心跳包通告间隔时间，默认1秒
+authentication {
+auth_type PASS
+auth_pass {{ auth_pass }}
+}
+virtual_ipaddress {
+{{ vip }}/24
+}
+track_script {
+check_service
+}
+}

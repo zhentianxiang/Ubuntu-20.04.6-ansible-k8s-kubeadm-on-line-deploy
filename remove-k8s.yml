@@ -1,0 +1,75 @@
+---
+- hosts: k8s
+  gather_facts: False
+  tasks:
+    - name: 移除k8s集群配置
+      shell: "kubeadm reset -f  >/dev/null 2>&1"
+      ignore_errors: yes
+      failed_when: false
+
+    - name: 卸载相关软件
+      package:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - keepalived
+        state: absent
+
+    - name: umount 卸载 docker 挂载
+      ignore_errors: yes
+      shell: for i in $ $(df -h |grep umount |awk '{print $1}');do umount $i;done
+      failed_when: false
+
+    - name: 删除 docker 数据
+      ignore_errors: yes
+      file:
+        path: "{{ docker_data_dir }}"
+        state: absent
+
+    - name: 删除 kubelet 数据
+      ignore_errors: yes
+      file:
+        path: "{{ kubelet_data_dir }}"
+        state: absent
+
+    - name: 开启swap
+      replace:
+        path: /etc/fstab
+        regexp: '^#(/swap.img.*) swap (.*)'
+        replace: '/\1 swap \2'
+
+    - name: 删除相关 kube 文件和目录
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/kubernetes/
+        - /root/.kube/config
+        - /var/lib/etcd
+        - /etc/etcd
+        - /var/lib/kubelet
+        - /var/lib/dockershim
+        - /var/run/kubernetes
+        - /var/lib/cni
+        - /etc/cni/net.d
+        - "{{ tmp_dir }}"
+
+- hosts: ha
+  gather_facts: false
+  tasks: 
+    - name: 卸载高可用负载均衡服务
+      package:
+        name:
+          - nginx
+          - keepalived
+        state: absent
+
+#- hosts: k8s
+#  gather_facts: false
+#  tasks:
+#    - name: 1分钟后重启k8s服务器
+#      shell: "shutdown -r 1"

@@ -1,0 +1,57 @@
+---
+- name: Add docker-ce repository
+  raw: "{{ item }}"
+  with_items:
+    - "curl -fsSL {{ docker_gpg_key }} | sudo apt-key add -"
+    - "add-apt-repository {{ docker_ce_repo }}"
+
+- name: Uninstall Docker CE if it's already installed
+  package:
+    name:
+      - docker*
+    state: absent
+  register: uninstall_result
+  until: uninstall_result is succeeded
+  retries: 5
+  delay: 30
+
+- name: Install Docker CE
+  package:
+    name:
+      - "{{ docker_ce }}"
+      - "{{ docker_ce_cli }}"
+    state: present
+  register: install_result
+  until: install_result is succeeded
+  retries: 5
+  delay: 30
+
+- name: Start Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  register: start_result
+  until: start_result is succeeded
+  retries: 5
+  delay: 30
+
+- name: Setup docker daemon
+  template:
+    src: "daemon.json.j2"
+    dest: "/etc/docker/daemon.json"
+
+- name: mkdir docker service dir
+  raw: mkdir -p /etc/systemd/system/docker.service.d
+
+- name: restart docker-ce
+  systemd:
+    name: docker
+    state: restarted
+
+- name: 查看状态
+  shell: docker info
+  register: Docker_info
+
+- name: docker 状态信息
+  debug: var=Docker_info.stdout_lines

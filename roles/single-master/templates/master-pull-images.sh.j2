@@ -1,0 +1,21 @@
+#/bin/bash
+#images-node.sh
+#所有works节点运行,获取kube-proxy,pause,coredns镜像, 也可以把master做成harbor, 统一从harbor拉取镜像
+
+# 使用如下脚本下载国内镜像，并修改tag为google的tag
+
+images=(
+{{ k8s_api }}:{{ k8s_version }}
+{{ k8s_controller }}:{{ k8s_version }}
+{{ k8s_scheduler }}:{{ k8s_version }}
+{{ k8s_etcd }}
+{{ k8s_proxy }}:{{ k8s_version }}
+{{ k8s_pause }}
+{{ k8s_coredns }}
+)
+
+for imageName in ${images[@]} ; do
+    docker pull {{ Other_URL }}/$imageName
+    docker tag {{ Other_URL }}/$imageName {{ GCR_URL }}/$imageName
+    docker rmi {{ Other_URL }}/$imageName
+done

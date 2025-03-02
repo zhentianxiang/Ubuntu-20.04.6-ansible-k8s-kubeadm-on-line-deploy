@@ -1,0 +1,83 @@
+---
+- name: 创建临时目录
+  file: dest={{ tmp_dir }} state=directory
+
+- name: 下载 Kubernetes APT 公钥
+  apt_key:
+    url: "{{ kube_gpg_key }}"
+    state: present
+
+- name: 添加 Kubernetes APT 源
+  apt_repository:
+    repo: "{{ kube_repo }}"
+    state: present
+    filename: "kubernetes"
+
+- name: 更新 APT 缓存
+  apt:
+    update_cache: yes
+
+- name: 安装kubelet kubeadm kubectl
+  package:
+    name:
+      - "kubelet={{ kube_version }}"
+      - "kubeadm={{ kube_version }}"
+      - "kubectl={{ kube_version }}"
+    state: present
+
+- name: 删除默认的 kubeadm 二进制文件
+  file:
+    path: /usr/bin/kubeadm
+    state: absent
+
+- name: 拷贝二次修改的 kubeadm-v1.23.0 的二进制文件
+  copy:
+    src: kubeadm
+    dest: /usr/bin/kubeadm
+    mode: '0755'
+
+- name: 启动kubelet
+  systemd:
+    name: kubelet
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: 重置k8s系统
+  shell: "kubeadm reset -f"
+
+- name: 删除相关 kube 文件和目录
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/kubernetes/
+    - "{{ ansible_env.HOME }}/.kube/config"
+    - /var/lib/kubelet
+    - /var/lib/dockershim
+    - /var/run/kubernetes
+    - /var/lib/cni
+    - /etc/cni/net.d
+
+- name: 分发join脚本
+  copy:
+    src: "{{ tmp_dir }}/node-join.sh"
+    dest: "{{ tmp_dir }}/node-join.sh"
+    mode: '0755'
+
+- name: 修改 kubelet 存储目录
+  template:
+    src: "kubelet.j2"
+    dest: "/etc/sysconfig/kubelet"
+
+- name: 修改 cgroup 为 systemd
+  template:
+    src: "10-kubeadm.conf.j2"
+    dest: "/etc/systemd/system/kubelet.service.d/10-kubeadm.conf"
+
+- name: 创建 manifests 目录
+  file: dest=/etc/kubernetes/manifests state=directory
+
+- name: 加入集群
+  ignore_errors: yes
+  shell: "/bin/bash {{ tmp_dir }}/node-join.sh >/dev/null 2>&1"

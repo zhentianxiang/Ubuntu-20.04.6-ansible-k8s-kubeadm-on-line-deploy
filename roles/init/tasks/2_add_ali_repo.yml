@@ -1,0 +1,28 @@
+---
+- name: 备份原有的repo源
+  ignore_errors: yes
+  shell: mkdir -p /etc/apt/bak && mv /etc/apt/sources.list /etc/apt/bak 2>/dev/null || true
+
+- name: 添加阿里镜像源
+  copy:
+    src: sources.list
+    dest: /etc/apt/sources.list
+
+- name: 更新镜像源
+  apt:
+    update_cache: yes
+  throttle: 1
+
+- name: 安装必需的软件包
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg-agent
+      - software-properties-common
+    state: present
+  register: result
+  until: result is succeeded
+  retries: 5
+  delay: 30

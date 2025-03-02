@@ -1,0 +1,143 @@
+---
+
+- name: "检查当前节点是否为主k8s-master1节点"
+  ansible.builtin.set_fact:
+    is_primary_etcd_node: "{{ inventory_hostname == groups['master'][0] }}"
+
+- name: 创建临时目录
+  file: dest={{ tmp_dir }} state=directory
+  when: is_primary_etcd_node
+
+- name: 下载 Kubernetes APT 公钥
+  apt_key:
+    url: "{{ kube_gpg_key }}"
+    state: present
+  when: is_primary_etcd_node
+
+- name: 添加 Kubernetes APT 源
+  apt_repository:
+    repo: "{{ kube_repo }}"
+    state: present
+    filename: "kubernetes"
+  when: is_primary_etcd_node
+
+- name: 更新 APT 缓存
+  apt:
+    update_cache: yes
+  when: is_primary_etcd_node
+
+- name: 安装kubelet kubeadm kubectl
+  package:
+    name:
+      - "kubelet={{ kube_version }}"
+      - "kubeadm={{ kube_version }}"
+      - "kubectl={{ kube_version }}"
+    state: present
+  when: is_primary_etcd_node
+
+- name: 删除默认的 kubeadm 二进制文件
+  file:
+    path: /usr/bin/kubeadm
+    state: absent
+  when: is_primary_etcd_node
+
+- name: 拷贝二次修改的 kubeadm-v1.23.0 的二进制文件
+  copy:
+    src: kubeadm
+    dest: /usr/bin/kubeadm
+    mode: '0755'
+  when: is_primary_etcd_node
+
+- name: 启动kubelet
+  systemd:
+    name: kubelet
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  when: is_primary_etcd_node
+
+- name: 设置kubectl自动补全
+  lineinfile:
+    path: /root/.bashrc   # 指定 root 用户的 .bashrc 文件
+    line: "{{ item }}"
+    create: yes           # 如果 .bashrc 文件不存在则创建
+    insertafter: EOF      # 确保添加到文件末尾
+    state: present        # 确保这行存在，避免重复
+  with_items:
+    - "source /usr/share/bash-completion/bash_completion"  # 确保加载 bash_completion
+    - "source <(kubectl completion bash)"                  # 添加 kubectl 自动补全
+  when: is_primary_etcd_node
+  become: true   # 以 root 权限执行
+
+- name: 重置k8s系统
+  shell: "kubeadm reset -f"
+  when: is_primary_etcd_node
+
+- name: 删除相关 kube 文件和目录
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/kubernetes/
+    - "{{ ansible_env.HOME }}/.kube/config"
+    - /var/lib/kubelet
+    - /var/lib/dockershim
+    - /var/run/kubernetes
+    - /var/lib/cni
+    - /etc/cni/net.d
+  when: is_primary_etcd_node
+
+#- name: 收集 etcd 主机的 IP 地址
+#  set_fact:
+#    etcd_endpoints: "{{ etcd_endpoints | default([]) + ['https://' + hostvars[item].ansible_default_ipv4.address + ':2379'] }}"
+#  with_items: "{{ groups['etcd'] }}"
+#  when: is_primary_etcd_node
+
+- name: 生成init配置
+  template:
+    src: templates/kubeadm-init.conf.j2
+    dest: "{{ tmp_dir }}/kubeadm-init.conf"
+    mode: '0644'
+  become: yes
+  when: is_primary_etcd_node
+
+- name: kubeadm init
+  shell: "kubeadm init --config={{ tmp_dir }}/kubeadm-init.conf --upload-certs > {{ tmp_dir }}/token.txt"
+  when: is_primary_etcd_node
+
+- name: 添加运行权限
+  shell: "mkdir -p $HOME/.kube; sudo cp -pf /etc/kubernetes/admin.conf $HOME/.kube/config; sudo chown $(id -u):$(id -g) $HOME/.kube/config"
+  when: is_primary_etcd_node
+
+- name: 修改 kubelet 存储目录
+  template: src=kubelet.j2 dest=/etc/sysconfig/kubelet
+  when: is_primary_etcd_node
+
+- name: 修改 cgroup 为 systemd
+  template: src=10-kubeadm.conf.j2 dest=/etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+  when: is_primary_etcd_node
+
+- name: 重启 kubelet
+  systemd:
+    name: kubelet
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  when: is_primary_etcd_node
+
+- name: 创建 master join 脚本
+  shell: "grep -B2 ' --certificate-key' {{ tmp_dir }}/token.txt > {{ tmp_dir }}/master-join.sh"
+  when: is_primary_etcd_node
+
+- name: 创建 node join 脚本
+  shell: "grep -A1 'kubeadm join' {{ tmp_dir }}/token.txt |tail -2 > {{ tmp_dir }}/node-join.sh"
+  when: is_primary_etcd_node
+
+- name: 等待 Kubernetes API 服务器准备好
+  wait_for:
+    host: "{{ inventory_hostname }}"  # 目标主机的名称
+    port: 6443  # Kubernetes API 服务器的端口
+    state: started
+  delegate_to: localhost
+  ignore_errors: yes  # 忽略错误，因为在 Kubernetes 启动之前可能会超时
+  when: is_primary_etcd_node

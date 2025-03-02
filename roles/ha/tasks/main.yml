@@ -1,0 +1,26 @@
+---
+- name: 安装keepalived
+  package:
+    name:
+      - keepalived
+    state: latest
+
+- name: 拷贝keepalived配置文件       
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+  with_indexed_items: "{{ groups['ha'] }}"
+  loop_control:
+    index_var: idx
+
+- name: 拷贝检测脚本
+  copy:
+    src: check_apiservice.sh
+    dest: /etc/keepalived/check_apiservice.sh
+    mode: '0755'
+
+- name: 启动keepalived
+  service:
+    name: keepalived
+    state: restarted
+    enabled: yes

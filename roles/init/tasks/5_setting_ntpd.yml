@@ -1,0 +1,33 @@
+---
+- name: 安装 NTP 服务
+  apt:
+    name: ntp
+    state: present
+    update_cache: yes
+
+- name: 删除默认的 NTP 服务器配置
+  lineinfile:
+    path: /etc/ntp.conf
+    regexp: "^pool "
+    state: absent
+
+- name: 添加阿里云 NTP 服务器
+  blockinfile:
+    path: /etc/ntp.conf
+    block: |
+      server ntp.aliyun.com iburst
+      server ntp1.aliyun.com iburst
+      server ntp2.aliyun.com iburst
+      server ntp3.aliyun.com iburst
+
+- name: 重新启动 NTP 服务
+  systemd:
+    name: ntp
+    state: restarted
+    enabled: yes
+
+- name: 设置系统时区
+  command: timedatectl set-timezone Asia/Shanghai
+
+- name: 启用本地 RTC（Windows 兼容）
+  command: timedatectl set-local-rtc 1

@@ -1,0 +1,8 @@
+- name: seting swapoff
+  raw: swapoff -a
+
+- name: setting fstab
+  replace:
+    path: /etc/fstab
+    regexp: '^\s*/swap.img none swap sw 0 0$'
+    replace: '#/swap.img none swap sw 0 0'

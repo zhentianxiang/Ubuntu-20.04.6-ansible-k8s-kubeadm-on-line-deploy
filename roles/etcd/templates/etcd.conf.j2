@@ -1,0 +1,27 @@
+# etcd configuration file
+#[Member]
+ETCD_NAME="{{ inventory_hostname }}"
+ETCD_DATA_DIR="{{ etcd_data }}"
+ETCD_LISTEN_PEER_URLS="https://{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:2380"
+ETCD_LISTEN_CLIENT_URLS="https://{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:2379"
+ETCD_WAL_DIR="{{ etcd_data }}/wal"
+
+#[Cluster]
+ETCD_INITIAL_ADVERTISE_PEER_URLS="https://{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:2380"
+ETCD_ADVERTISE_CLIENT_URLS="https://{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:2379"
+ETCD_INITIAL_CLUSTER="{% for host in groups['etcd'] %}{{ host }}=https://{{ hostvars[host].ansible_default_ipv4.address }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_INITIAL_CLUSTER_STATE="new"
+# Performance tuning
+# Leader 心跳间隔（毫秒）
+ETCD_HEARTBEAT_INTERVAL="200"
+# Leader 选举超时时间（毫秒）
+ETCD_ELECTION_TIMEOUT="2500"
+# 单节点的 etcd 数据库大小上限(16G)
+ETCD_QUOTA_BACKEND_BYTES="17179869184"
+# 6小时内的事务记录
+ETCD_AUTO_COMPACTION_RETENTION="1h"
+# 快照间隔（事务提交数）
+ETCD_SNAPSHOT_COUNT="500000"
+# 日志级别（debug、info、warn)
+ETCD_LOG_LEVEL=warn

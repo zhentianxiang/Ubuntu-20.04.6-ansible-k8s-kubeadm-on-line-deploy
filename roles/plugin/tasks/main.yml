@@ -1,0 +1,116 @@
+---
+- name: 创建相关目录
+  file:
+    dest: "{{ item }}"
+    state: directory
+  loop:
+    - "{{k8s_app}}"
+    - "{{ingress_app}}"
+    - "{{calico_app}}"
+    - "{{openebs_app}}"
+
+- name: 拷贝 ingress yaml 文件
+  template: src="ingress/{{item.key}}" dest="{{ingress_app}}/{{item.value}}"
+  with_dict:
+    - {"ingress-nginx-v1.5.1.yaml.j2":"ingress-nginx-v1.5.1.yaml"}
+
+- name: 拷贝 calico yaml 文件
+  template: src="calico/{{item.key}}" dest="{{calico_app}}/{{item.value}}"
+  with_dict:
+    - {"calico-v3.23.5.yaml.j2":"calico-v3.23.5.yaml"}
+
+- name: 拷贝 openeba yaml 文件
+  template: src="openebs/{{item.key}}" dest="{{openebs_app}}/{{item.value}}"
+  with_dict:
+    - {"openebs-operator.yaml.j2":"openebs-operator.yaml"}
+
+- name: 等待 Kubernetes API 服务器准备好
+  wait_for:
+    host: "{{ inventory_hostname }}"  # 目标主机的名称
+    port: 6443  # Kubernetes API 服务器的端口
+    state: started
+  delegate_to: localhost
+  ignore_errors: yes  # 忽略错误，因为在 Kubernetes 启动之前可能会超时
+
+- name: 执行 kubectl apply
+  shell: |
+    for dir in $(find . -type f -name "*.yaml" -exec dirname {} \; | sort -u); do kubectl apply -f "$dir"; done
+  args:
+    chdir: "{{ k8s_app }}"
+
+- name: 打印为 ingress 打标签命令
+  shell: |
+    echo "kubectl label nodes xxxx ingress/type=nginx 部署完需要重新 kubectl apply -f 提交一下配置文件, 因为默认没打标签有些配置没提交上"
+  register: ingress
+  changed_when: false
+
+- name: 打印打标签命令输出
+  debug:
+    var: ingress.stdout
+
+- name: 打印修改 kube-api pod 文件命令
+  shell: |
+    echo "sed -i '/image:/i\\    - --feature-gates=RemoveSelfLink=false' /etc/kubernetes/manifests/kube-apiserver.yaml 如果使用 nfs 持久化存储需要关闭这个, 每台 master 节点都要执行"
+  register: kube_api
+  changed_when: false
+
+- name: 打印修改 kube-api pod 文件命令输出
+  debug:
+    var: kube_api.stdout
+
+- name: 打印修改 kube-controller pod 文件命令
+  shell: |
+    echo "sed -i 's/bind-address=127.0.0.1/bind-address=0.0.0.0/g' /etc/kubernetes/manifests/kube-controller-manager.yaml 开启 0.0.0.0 监听, 每台 master 节点都要执行"
+  register: kube_controller
+  changed_when: false
+
+- name: 打印修改 kube-controller pod 文件命令输出
+  debug:
+    var: kube_ontroller.stdout
+
+- name: 打印修改 kube-proxy 监听地址命令
+  shell: |
+    echo "kubectl get cm -n kube-system kube-proxy -o yaml | sed 's/metricsBindAddress: \"\"/metricsBindAddress: \"0.0.0.0\"/g' | kubectl replace -f -"
+  register: kube_proxy
+  changed_when: false
+
+- name: 打印修改 kube-proxy 监听地址命令输出
+  debug:
+    var: kube_proxy.stdout
+
+- name: 打印 kube-proxy 重启命令
+  shell: |
+    echo "kubectl rollout restart daemonset -n kube-system kube-proxy"
+  register: kube_proxy_restart
+  changed_when: false
+
+- name: 打印 kube-proxy 重启命令输出
+  debug:
+    var: kube_proxy_restart.stdout
+
+- name: 查看 k8s 集群证书到期时间
+  shell: kubeadm certs check-expiration
+  register: certs
+  changed_when: false
+
+- name: 打印 k8s 集群证书到期时间
+  debug:
+    var: certs.stdout
+
+- name: 查看 k8s ca.crt 集群证书到期时间
+  shell: openssl x509 -in /etc/kubernetes/pki/ca.crt -noout -text | grep 'Not After'
+  register: ca
+  changed_when: false
+
+- name: 打印 ca.crt 集群证书到期时间
+  debug:
+    var: ca.stdout
+
+- name: 查看 k8s apiserver.crt 集群证书到期时间
+  shell: openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -text | grep 'Not After'
+  register: apiserver
+  changed_when: false
+
+- name: 打印 k8s apiserver.crt 集群证书到期时间
+  debug:
+    var: apiserver.stdout

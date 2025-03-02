@@ -1,0 +1,42 @@
+---
+- name: 1.系统初始化
+  gather_facts: true
+  hosts: all
+  roles:
+    - init
+  tags: init 
+
+- name: 2.K8S 主机名
+  gather_facts: true
+  hosts: k8s
+  roles:
+    - hostname
+  tags: hostname
+
+- name: 3.部署Docker
+  gather_facts: true
+  hosts: k8s 
+  roles:
+    - docker 
+  tags: docker
+
+- name: 4.部署K8S Master
+  gather_facts: true
+  hosts: master[0]
+  roles:
+    - single-master
+  tags: single-master
+
+- name: 5.部署K8S Node
+  gather_facts: true
+  hosts: node
+  roles:
+    - node
+  tags: node
+
+- name: 6.部署插件
+  gather_facts: true
+  hosts: master
+  roles:
+    - plugin
+  tags: plugin

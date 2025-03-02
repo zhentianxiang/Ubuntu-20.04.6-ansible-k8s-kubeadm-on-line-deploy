@@ -1,0 +1,35 @@
+---
+- name: 1.系统初始化
+  gather_facts: true
+  hosts: newnode
+  roles:
+    - init
+  tags: init 
+
+- name: 2.K8S初始化
+  gather_facts: true
+  hosts: newnode
+  roles:
+    - common
+  tags: common 
+
+- name: 3.部署Docker
+  gather_facts: true
+  hosts: newnode 
+  roles:
+    - docker 
+  tags: docker
+
+- name: 4.生成新token
+  gather_facts: true
+  hosts: master[0] 
+  roles:
+    - jointoken 
+  tags: jointoken
+
+- name: 5.部署K8S Node
+  gather_facts: true
+  hosts: newnode
+  roles:
+    - node
+  tags: node

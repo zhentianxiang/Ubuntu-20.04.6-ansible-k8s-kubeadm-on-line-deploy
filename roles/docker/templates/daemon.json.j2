@@ -1,0 +1,17 @@
+{
+  "data-root": "{{ docker_data_dir }}",
+  "registry-mirrors": [
+      "https://docker-mirror-proxy.zhenmourener.workers.dev/",
+      "https://6130e0dd.cf-workers-docker-io-upw.pages.dev/"
+  ],
+  "insecure-registries": [
+      "example.com:5000"
+  ],
+  "live-restore": true,
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "10"
+  }
+}

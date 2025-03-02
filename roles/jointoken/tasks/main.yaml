@@ -1,0 +1,10 @@
+---
+# 24小时后, init token过期后, 需要添加新节点yaml
+- name: 创建临时目录
+  file: dest={{ tmp_dir }} state=directory
+
+- name: 创建token
+  shell: "kubeadm token create --print-join-command > {{ tmp_dir }}/join-token.txt 2>&1"
+
+- name: 创建 node join 脚本
+  shell: "grep -A1 'kubeadm join' {{ tmp_dir }}/join-token.txt > {{ tmp_dir }}/node-join.sh"
