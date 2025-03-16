@@ -2,6 +2,7 @@
   package:
     name:
       - ntp
+      - iftop
       - ntpdate
       - rsync
       - bash-completion

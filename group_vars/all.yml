@@ -13,7 +13,7 @@ tmp_dir: '/opt/k8s-install/join'                                                
 docker_data_dir: '/var/lib/docker'                                                    # docker 数据存储路径
 k8s_version: 'v1.23.0'                                                                # kubrenetes 初始化定义的版本信息
 kubelet_data_dir: '/var/lib/kubelet'                                                  # kubelet (pod) 数据存储路径
-k8s_image_url: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
+k8s_image_url: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                  # kubrenetes 初始化拉取的镜像前缀
 k8s_extra_ips:                                                                        # kubrenetes master 节点信息(预留),并不是当前 hosts.ini 文件定义的,目的是为了后期扩容 master
   - "10.0.0.150"
   - "10.0.0.151"
@@ -52,3 +52,24 @@ k8s_app: '/opt/k8s-install/app'                                                 
 ingress_app: '/opt/k8s-install/app/ingress'                                           # ingress yaml 存放位置
 openebs_app: '/opt/k8s-install/app/openebs_app'                                       # openebs_app yaml 存放位置
 calico_app: '/opt/k8s-install/app/calico'                                             # calico yaml 存放位置
+k8s_calico_version_map:                                                               # 定义 Kubernetes 版本与 Calico 版本的映射相关文档: https://docs.tigera.io/calico/3.28/getting-started/kubernetes/requirements
+  "1.28": "v3.28.0"
+  "1.27": "v3.27.0"
+  "1.26": "v3.26.0"
+  "1.25": "v3.25.0"
+  "1.24": "v3.24.0"
+  "1.23": "v3.23.5"
+  "1.22": "v3.22.0"
+k8s_ingress_version_map:                                                              # 定义 Kubernetes 版本与 ingress-nginx 版本的映射
+  "1.29": "v1.10.0"
+  "1.28": "v1.9.5"
+  "1.27": "v1.9.5"
+  "1.26": "v1.9.5"
+  "1.25": "v1.5.1"
+  "1.24": "v1.5.1"
+  "1.23": "v1.5.1"
+  "1.22": "v1.5.1"
+default_calico_version: "v3.25.0"                                                     # 默认的 Calico 和 ingress-nginx 版本（如果未匹配到 Kubernetes 版本）
+default_ingress_version: "v1.5.1"
+ingress_node_selector:                                                                # ingress-nginx 的 nodeSelector 配置
+  ingress/type: "nginx"

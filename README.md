@@ -8,7 +8,7 @@ root@ubuntu:~# vim iplist.txt
 10.0.0.22
 10.0.0.23
 10.0.0.24
-root@ubuntu:~# for host in $(cat iplist.txt); do sshpass -p '123123' ssh-copy-id -o StrictHostKeyChecking=no 'root'@$host; done
+root@ubuntu:~# for host in $(cat iplist.txt); do sshpass -p 'xxxxxxxxxxxxxx' ssh-copy-id -o StrictHostKeyChecking=no 'root'@$host; done
 root@ubuntu:~# ansible -i hosts.ini all -m shell -a "whoami"
 ```
 

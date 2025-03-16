@@ -1,23 +1,78 @@
 ---
+- name: 获取 Kubernetes 版本
+  shell: kubectl version --short | grep Server | awk '{print $3}'
+  register: k8s_version
+  changed_when: false
+
+- name: 提取 Kubernetes 主版本号（例如 1.23）
+  set_fact:
+    k8s_major_minor_version: "{{ k8s_version.stdout | regex_replace('^v?(\\d+\\.\\d+).*', '\\1') }}"
+
+- name: 根据 Kubernetes 版本选择 Calico 版本
+  set_fact:
+    calico_version: "{{ k8s_calico_version_map[k8s_major_minor_version] | default(default_calico_version) }}"
+  when: k8s_major_minor_version is defined
+
+- name: 根据 Kubernetes 版本选择 ingress-nginx 版本
+  set_fact:
+    ingress_version: "{{ k8s_ingress_version_map[k8s_major_minor_version] | default(default_ingress_version) }}"
+  when: k8s_major_minor_version is defined
+
+- name: 打印 Kubernetes 版本和组件版本
+  debug:
+    msg: |
+      Kubernetes 版本: {{ k8s_major_minor_version }}
+      选择的 Calico 版本: {{ calico_version }}
+      选择的 ingress-nginx 版本: {{ ingress_version }}
+
 - name: 创建相关目录
   file:
-    dest: "{{ item }}"
+    path: "{{ item }}"
     state: directory
   loop:
-    - "{{k8s_app}}"
-    - "{{ingress_app}}"
-    - "{{calico_app}}"
-    - "{{openebs_app}}"
+    - "{{ k8s_app }}"
+    - "{{ ingress_app }}"
+    - "{{ calico_app }}"
+    - "{{ openebs_app }}"
 
-- name: 拷贝 ingress yaml 文件
-  template: src="ingress/{{item.key}}" dest="{{ingress_app}}/{{item.value}}"
-  with_dict:
-    - {"ingress-nginx-v1.5.1.yaml.j2":"ingress-nginx-v1.5.1.yaml"}
+- name: 下载 Calico YAML 文件
+  get_url:
+    url: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+    dest: "{{ calico_app }}/calico-{{ calico_version }}.yaml"
+  when: calico_version is defined
 
-- name: 拷贝 calico yaml 文件
-  template: src="calico/{{item.key}}" dest="{{calico_app}}/{{item.value}}"
-  with_dict:
-    - {"calico-v3.23.5.yaml.j2":"calico-v3.23.5.yaml"}
+- name: 修改 Calico YAML 文件，添加 IP_AUTODETECTION_METHOD
+  lineinfile:
+    path: "{{ calico_app }}/calico-{{ calico_version }}.yaml"
+    regexp: '^\s*- name: IP_AUTODETECTION_METHOD'
+    line: '        - name: IP_AUTODETECTION_METHOD\n          value: {{ calico_network }}'
+    insertafter: '^\s*- name: CALICO_IPV4POOL_CIDR'
+  when: calico_version is defined
+
+- name: 下载 ingress-nginx YAML 文件
+  get_url:
+    url: "https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-{{ ingress_version }}/deploy/static/provider/cloud/deploy.yaml"
+    dest: "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+  when: ingress_version is defined
+
+- name: 修改 ingress-nginx YAML 文件，添加 hostNetwork 和 nodeSelector
+  blockinfile:
+    path: "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - hostNetwork and nodeSelector"
+    block: |
+          hostNetwork: true
+          nodeSelector:
+            {{ ingress_node_selector | to_nice_yaml | indent(8) }}
+    insertafter: '^\s*containers:'
+  when: ingress_version is defined
+
+- name: 部署 Calico 网络插件
+  shell: kubectl apply -f "{{ calico_app }}/calico-{{ calico_version }}.yaml"
+  when: calico_version is defined
+
+- name: 部署 ingress-nginx
+  shell: kubectl apply -f "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+  when: ingress_version is defined
 
 - name: 拷贝 openeba yaml 文件
   template: src="openebs/{{item.key}}" dest="{{openebs_app}}/{{item.value}}"
@@ -44,73 +99,15 @@
   register: ingress
   changed_when: false
 
-- name: 打印打标签命令输出
+- name: 格式化输出 ingress 重新提交命令
   debug:
-    var: ingress.stdout
-
-- name: 打印修改 kube-api pod 文件命令
-  shell: |
-    echo "sed -i '/image:/i\\    - --feature-gates=RemoveSelfLink=false' /etc/kubernetes/manifests/kube-apiserver.yaml 如果使用 nfs 持久化存储需要关闭这个, 每台 master 节点都要执行"
-  register: kube_api
-  changed_when: false
-
-- name: 打印修改 kube-api pod 文件命令输出
-  debug:
-    var: kube_api.stdout
-
-- name: 打印修改 kube-controller pod 文件命令
-  shell: |
-    echo "sed -i 's/bind-address=127.0.0.1/bind-address=0.0.0.0/g' /etc/kubernetes/manifests/kube-controller-manager.yaml 开启 0.0.0.0 监听, 每台 master 节点都要执行"
-  register: kube_controller
-  changed_when: false
-
-- name: 打印修改 kube-controller pod 文件命令输出
-  debug:
-    var: kube_ontroller.stdout
-
-- name: 打印修改 kube-proxy 监听地址命令
-  shell: |
-    echo "kubectl get cm -n kube-system kube-proxy -o yaml | sed 's/metricsBindAddress: \"\"/metricsBindAddress: \"0.0.0.0\"/g' | kubectl replace -f -"
-  register: kube_proxy
-  changed_when: false
-
-- name: 打印修改 kube-proxy 监听地址命令输出
-  debug:
-    var: kube_proxy.stdout
-
-- name: 打印 kube-proxy 重启命令
-  shell: |
-    echo "kubectl rollout restart daemonset -n kube-system kube-proxy"
-  register: kube_proxy_restart
-  changed_when: false
-
-- name: 打印 kube-proxy 重启命令输出
-  debug:
-    var: kube_proxy_restart.stdout
+    msg: "{{ ingress.stdout_lines }}"
 
 - name: 查看 k8s 集群证书到期时间
-  shell: kubeadm certs check-expiration
+  shell: kubeadm certs check-expiration | sed -n '/CERTIFICATE/, $p'
   register: certs
   changed_when: false
 
-- name: 打印 k8s 集群证书到期时间
+- name: 格式化输出 k8s 证书到期时间
   debug:
-    var: certs.stdout
-
-- name: 查看 k8s ca.crt 集群证书到期时间
-  shell: openssl x509 -in /etc/kubernetes/pki/ca.crt -noout -text | grep 'Not After'
-  register: ca
-  changed_when: false
-
-- name: 打印 ca.crt 集群证书到期时间
-  debug:
-    var: ca.stdout
-
-- name: 查看 k8s apiserver.crt 集群证书到期时间
-  shell: openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -text | grep 'Not After'
-  register: apiserver
-  changed_when: false
-
-- name: 打印 k8s apiserver.crt 集群证书到期时间
-  debug:
-    var: apiserver.stdout
+    msg: "{{ certs.stdout_lines }}"

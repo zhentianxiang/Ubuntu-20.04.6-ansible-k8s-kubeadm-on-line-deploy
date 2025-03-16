@@ -4,5 +4,5 @@
 - name: setting fstab
   replace:
     path: /etc/fstab
-    regexp: '^\s*/swap.img none swap sw 0 0$'
+    regexp: '^\s*/swap\.img\s+none\s+swap\s+sw\s+0\s+0$'
     replace: '#/swap.img none swap sw 0 0'
