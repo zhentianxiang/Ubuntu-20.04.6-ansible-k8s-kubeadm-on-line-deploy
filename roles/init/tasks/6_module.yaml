@@ -65,6 +65,7 @@
     - { name: 'net.ipv4.tcp_keepalive_intvl', value: '30' }
     - { name: 'vm.max_map_count', value: '262144' }
     - { name: 'vm.swappiness', value: '0' }
+    - { name: 'vm.nr_hugepages', value: '0' }
     - { name: 'vm.overcommit_memory', value: '1' }
     - { name: 'vm.panic_on_oom', value: '0' }
     - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
