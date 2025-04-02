@@ -382,3 +382,12 @@ Sep 14 00:59:22 k8s-node1 kubelet[1611]: E0914 00:59:22.040084    1611 file_linu
 root@ubuntu:~# ansible-playbook -i hosts.ini remove-k8s.yml
 ```
 
+### 9. 新机器加入集群后的操作
+
+```
+# 添加节点
+[root@k8s-master1 ~]# ansible-playbook -i hosts.ini newnode add-node.yml
+
+# 拷贝 harbor 证书文件，当然 ansbile 中是没有的，需要后期自己部署 harbor，只是为了使用 ansible 统一集群配置
+[root@k8s-master1 ~]# ansible -i hosts.ini newnode -m copy -a "src=/etc/docker/certs.d/ dest=/etc/docker/certs.d/ mode=0755" --become
+```
