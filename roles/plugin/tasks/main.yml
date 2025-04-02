@@ -37,33 +37,46 @@
 
 - name: 下载 Calico YAML 文件
   get_url:
-    url: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+    url: "{{ ghproxy }}/https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
     dest: "{{ calico_app }}/calico-{{ calico_version }}.yaml"
   when: calico_version is defined
 
 - name: 修改 Calico YAML 文件，添加 IP_AUTODETECTION_METHOD
-  lineinfile:
-    path: "{{ calico_app }}/calico-{{ calico_version }}.yaml"
-    regexp: '^\s*- name: IP_AUTODETECTION_METHOD'
-    line: '        - name: IP_AUTODETECTION_METHOD\n          value: {{ calico_network }}'
-    insertafter: '^\s*- name: CALICO_IPV4POOL_CIDR'
+  shell: |
+    sed -i "/k8s,bgp/a\            - name: IP_AUTODETECTION_METHOD\n              value: {{ calico_network }}" "{{ calico_app }}/calico-{{ calico_version }}.yaml"
   when: calico_version is defined
 
 - name: 下载 ingress-nginx YAML 文件
   get_url:
-    url: "https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-{{ ingress_version }}/deploy/static/provider/cloud/deploy.yaml"
+    url: "{{ ghproxy }}/https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-{{ ingress_version }}/deploy/static/provider/cloud/deploy.yaml"
     dest: "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
   when: ingress_version is defined
 
 - name: 修改 ingress-nginx YAML 文件，添加 hostNetwork 和 nodeSelector
-  blockinfile:
-    path: "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - hostNetwork and nodeSelector"
-    block: |
-          hostNetwork: true
-          nodeSelector:
-            {{ ingress_node_selector | to_nice_yaml | indent(8) }}
-    insertafter: '^\s*containers:'
+  shell: |
+    awk '
+      # 标记 "kind: Deployment" 之后开始修改
+      /kind: Deployment/ { in_deployment=1; print $0; next }
+
+      # 在 Deployment 部分插入 hostNetwork: true
+      in_deployment && /containers:/ { 
+        print "      hostNetwork: true"; 
+        print $0; 
+        next 
+      }
+
+      # 在 Deployment 部分修改 nodeSelector
+      in_deployment && /kubernetes.io\/os: linux/ { 
+        print "        {{ ingres_label }}"; 
+        next 
+      }
+
+      # 当遇到 "kind:" 但不是 "Deployment" 时，结束修改
+      in_deployment && /kind:/ && $0 !~ /Deployment/ { in_deployment=0 }
+
+      # 保持其他内容不变
+      { print $0 }
+    ' "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml" > temp.yaml && mv temp.yaml "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
   when: ingress_version is defined
 
 - name: 部署 Calico 网络插件
@@ -111,3 +124,21 @@
 - name: 格式化输出 k8s 证书到期时间
   debug:
     msg: "{{ certs.stdout_lines }}"
+
+- name: 查看集群状态
+  shell: kubectl get node -o wide
+  register: node_status
+  changed_when: false
+
+- name: 格式化输出集群状态
+  debug:
+    msg: "{{ node_status.stdout_lines }}"
+
+- name: 查看POD状态
+  shell: kubectl get pod -A -o wide
+  register: pod_status
+  changed_when: false
+
+- name: 格式化输出POD状态
+  debug:
+    msg: "{{ pod_status.stdout_lines }}"

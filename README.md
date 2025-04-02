@@ -2,6 +2,9 @@
 
 ```sh
 root@ubuntu:~# apt -y install ansible sshpass
+root@ubuntu:~# vim /etc/ansible/ansible.cfg
+ 10 [defaults]
+ 11 ansible_shell_executable = /usr/bin/bash # 新增这个
 root@ubuntu:~# ssh-keygen -t rsa
 root@ubuntu:~# vim iplist.txt
 10.0.0.21
@@ -95,7 +98,7 @@ tmp_dir: '/opt/k8s-install/join'                                                
 docker_data_dir: '/var/lib/docker'                                                    # docker 数据存储路径
 k8s_version: 'v1.23.0'                                                                # kubrenetes 初始化定义的版本信息
 kubelet_data_dir: '/var/lib/kubelet'                                                  # kubelet (pod) 数据存储路径
-k8s_image_url: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
+k8s_image_url: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                  # kubrenetes 初始化拉取的镜像前缀
 k8s_extra_ips:                                                                        # kubrenetes master 节点信息(预留),并不是当前 hosts.ini 文件定义的,目的是为了后期扩容 master
   - "10.0.0.150"
   - "10.0.0.151"
@@ -112,7 +115,7 @@ notification_emails:
 smtp_server: '127.0.0.1'                                                              # keepalived 邮件服务器地址
 smtp_connect_timeout: '30'                                                            # keepalived 邮件发送超时时间(模板而已,并没有启用)
 auth_pass: 'kubernetes'                                                               # keepalived auth_pass
-lb_port: '6443'                                                                      # nginx 负载均衡监听端口,如果只是部署单 master 则把端口 从 16443 修改为 6443
+lb_port: '6443'                                                                       # nginx 负载均衡监听端口,如果只是部署单 master 则把端口 从 16443 修改为 6443
 etcd_version: 'v3.5.1'                                                                # ETCD 版本
 etcd_conf: "/etc/etcd/"                                                               # ETCD 配置文件路径
 etcd_ssl: '/etc/etcd/ssl'                                                             # ETCD 证书存储路径
@@ -132,8 +135,28 @@ calico_network: '"interface=ens33"'                                             
 openebs_data: '"/data/openebs"'                                                       # openebs local pvc 数据存储目录
 k8s_app: '/opt/k8s-install/app'                                                       # 创建了一个存放 yaml 文件的主目录
 ingress_app: '/opt/k8s-install/app/ingress'                                           # ingress yaml 存放位置
+ingres_label: 'ingress/type: nginx'                                                   # ingress 部署节点 label
 openebs_app: '/opt/k8s-install/app/openebs_app'                                       # openebs_app yaml 存放位置
 calico_app: '/opt/k8s-install/app/calico'                                             # calico yaml 存放位置
+k8s_calico_version_map:                                                               # 定义 Kubernetes 版本与 Calico 版本的映射相关文档: https://docs.tigera.io/calico/3.28/getting-started/kubernetes/requirements
+  "1.28": "v3.28.0"
+  "1.27": "v3.27.0"
+  "1.26": "v3.26.0"
+  "1.25": "v3.25.0"
+  "1.24": "v3.24.0"
+  "1.23": "v3.23.5"
+  "1.22": "v3.22.0"
+k8s_ingress_version_map:                                                              # 定义 Kubernetes 版本与 ingress-nginx 版本的映射
+  "1.29": "v1.10.0"
+  "1.28": "v1.9.5"
+  "1.27": "v1.9.5"
+  "1.26": "v1.9.5"
+  "1.25": "v1.5.1"
+  "1.24": "v1.5.1"
+  "1.23": "v1.5.1"
+  "1.22": "v1.5.1"
+default_calico_version: "v3.25.0"                                                     # 默认的 Calico 和 ingress-nginx 版本（如果未匹配到 Kubernetes 版本）
+default_ingress_version: "v1.5.1"
 ```
 ```sh
 root@ubuntu:~# ansible-playbook -i hosts.ini single-master-deploy.yml  # 单节点部署
@@ -230,7 +253,7 @@ tmp_dir: '/opt/k8s-install/join'                                                
 docker_data_dir: '/var/lib/docker'                                                    # docker 数据存储路径
 k8s_version: 'v1.23.0'                                                                # kubrenetes 初始化定义的版本信息
 kubelet_data_dir: '/var/lib/kubelet'                                                  # kubelet (pod) 数据存储路径
-k8s_image_url: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
+k8s_image_url: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                  # kubrenetes 初始化拉取的镜像前缀
 k8s_extra_ips:                                                                        # kubrenetes master 节点信息(预留),并不是当前 hosts.ini 文件定义的,目的是为了后期扩容 master
   - "10.0.0.150"
   - "10.0.0.151"
@@ -267,8 +290,28 @@ calico_network: '"interface=ens33"'                                             
 openebs_data: '"/data/openebs"'                                                       # openebs local pvc 数据存储目录
 k8s_app: '/opt/k8s-install/app'                                                       # 创建了一个存放 yaml 文件的主目录
 ingress_app: '/opt/k8s-install/app/ingress'                                           # ingress yaml 存放位置
+ingres_label: 'ingress/type: nginx'                                                   # ingress 部署节点 label
 openebs_app: '/opt/k8s-install/app/openebs_app'                                       # openebs_app yaml 存放位置
 calico_app: '/opt/k8s-install/app/calico'                                             # calico yaml 存放位置
+k8s_calico_version_map:                                                               # 定义 Kubernetes 版本与 Calico 版本的映射相关文档: https://docs.tigera.io/calico/3.28/getting-started/kubernetes/requirements
+  "1.28": "v3.28.0"
+  "1.27": "v3.27.0"
+  "1.26": "v3.26.0"
+  "1.25": "v3.25.0"
+  "1.24": "v3.24.0"
+  "1.23": "v3.23.5"
+  "1.22": "v3.22.0"
+k8s_ingress_version_map:                                                              # 定义 Kubernetes 版本与 ingress-nginx 版本的映射
+  "1.29": "v1.10.0"
+  "1.28": "v1.9.5"
+  "1.27": "v1.9.5"
+  "1.26": "v1.9.5"
+  "1.25": "v1.5.1"
+  "1.24": "v1.5.1"
+  "1.23": "v1.5.1"
+  "1.22": "v1.5.1"
+default_calico_version: "v3.25.0"                                                     # 默认的 Calico 和 ingress-nginx 版本（如果未匹配到 Kubernetes 版本）
+default_ingress_version: "v1.5.1"
 ```
 
 ```sh
