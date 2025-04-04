@@ -115,12 +115,7 @@ kube_version: '1.23.0-00'                                                       
 code_version: 'v1.23.0'                                                               # k8s 源代码版本
 
 tmp_dir: '/opt/k8s-install/join'                                                      # 初始化集群一些配置文件存放位置
-docker_ce: 'docker-ce-20.10.9'                                                        # docker_ce 版本信息
-docker_ce_cli: 'docker-ce-cli-20.10.9'                                                # docker_ce_cli 版本信息
-containerd: 'containerd.io'                                                           # containerd 版本信息
 docker_data_dir: '/var/lib/docker'                                                    # docker 数据存储路径
-kube_version: '1.23.0'                                                                # kubrenetes 版本信息(ansible中 main.yml 文件引用的)
-k8s_version: 'v1.23.0'                                                                # kubrenetes 初始化定义的版本信息
 kubelet_data_dir: '/var/lib/kubelet'                                                  # kubelet (pod) 数据存储路径
 Other_URL: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
 k8s_extra_ips:                                                                        # kubrenetes master 节点信息(预留),并不是当前 hosts.ini 文件定义的,目的是为了后期扩容 master
@@ -281,12 +276,7 @@ kube_version: '1.23.0-00'                                                       
 code_version: 'v1.23.0'                                                               # k8s 源代码版本
 
 tmp_dir: '/opt/k8s-install/join'                                                      # 初始化集群一些配置文件存放位置
-docker_ce: 'docker-ce-20.10.9'                                                        # docker_ce 版本信息
-docker_ce_cli: 'docker-ce-cli-20.10.9'                                                # docker_ce_cli 版本信息
-containerd: 'containerd.io'                                                           # containerd 版本信息
 docker_data_dir: '/var/lib/docker'                                                    # docker 数据存储路径
-kube_version: '1.23.0'                                                                # kubrenetes 版本信息(ansible中 main.yml 文件引用的)
-k8s_version: 'v1.23.0'                                                                # kubrenetes 初始化定义的版本信息
 kubelet_data_dir: '/var/lib/kubelet'                                                  # kubelet (pod) 数据存储路径
 Other_URL: 'registry.cn-hangzhou.aliyuncs.com/google_containers'                      # kubrenetes 初始化拉取的镜像前缀
 k8s_extra_ips:                                                                        # kubrenetes master 节点信息(预留),并不是当前 hosts.ini 文件定义的,目的是为了后期扩容 master
