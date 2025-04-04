@@ -8,11 +8,6 @@
 {{ hostvars[host].ip }} {{ hostvars[host].inventory_hostname }}
 {% endfor %}
 
-# 输出 etcd 组主机
-{% for etcd in groups['etcd'] %}
-{{ hostvars[etcd].ip }} {{ hostvars[etcd].inventory_hostname }}
-{% endfor %}
-
 # 输出自定义的 hosts 解析
 {% for hostname, ip in custom_hosts.items() %}
 {{ ip }}   {{ hostname }}

@@ -1,0 +1,129 @@
+- name: "检查当前节点是否为主k8s-master1节点"
+  ansible.builtin.set_fact:
+    is_primary_master_node: "{{ inventory_hostname == groups['master'][0] }}"
+
+- name: 创建临时目录
+  file: 
+    path: "{{ tmp_dir }}"
+    state: directory
+    mode: '0755'
+  when: is_primary_master_node
+
+- name: 下载并安装 Go 环境
+  shell: |
+    wget https://go.dev/dl/go1.20.4.linux-amd64.tar.gz -O /tmp/go.tar.gz
+    tar -C /usr/local -xzf /tmp/go.tar.gz
+  args:
+    creates: /usr/local/go
+  when: is_primary_master_node
+
+- name: 添加 Go 相关环境变量到 /etc/profile
+  lineinfile:
+    path: /etc/profile
+    line: "{{ item }}"
+    create: yes
+  loop:
+    - 'export PATH=$PATH:/usr/local/go/bin'
+    - 'export GOPROXY=https://goproxy.cn'
+    - 'export GO111MODULE=on'
+  when: is_primary_master_node
+
+- name: 让 /etc/profile 立即生效
+  shell: source /etc/profile
+  args:
+    executable: /bin/bash
+  when: is_primary_master_node
+
+- name: 检查 kubeadm 二进制文件是否已存在
+  stat:
+    path: "{{ tmp_dir }}/kubernetes/_output/local/go/bin/kubeadm"
+  register: kubeadm_binary
+  when: is_primary_master_node
+
+- name: 设置 kubeadm_binary 为全局变量
+  set_fact:
+    kubeadm_binary_exists: "{{ kubeadm_binary.stat.exists }}"
+  when: is_primary_master_node
+
+- name: 调试 kubeadm_binary 变量
+  debug:
+    msg: "kubeadm_binary.stat.exists: {{ kubeadm_binary.stat.exists }}"
+  when: is_primary_master_node
+
+- name: 调试 kubeadm_binary_exists 变量
+  debug:
+    msg: "kubeadm_binary_exists: {{ kubeadm_binary_exists }}"
+  when: is_primary_master_node
+
+- name: 如果 kubeadm 二进制文件不存在，则清理并克隆 Kubernetes 源码
+  block:
+    - name: 清理可能存在的 Kubernetes 代码目录
+      file:
+        path: "{{ tmp_dir }}/kubernetes"
+        state: absent
+
+    - name: 下载指定版本的 Kubernetes 源码（带重试）
+      get_url:
+        url: "{{ ghproxy }}/https://github.com/kubernetes/kubernetes/archive/{{ code_version }}.tar.gz"
+        dest: "{{ tmp_dir }}/kubernetes.tar.gz"
+      register: download_result
+      until: download_result is succeeded
+      retries: 3
+      delay: 180
+
+    - name: 确保目标目录存在
+      file:
+        path: "{{ tmp_dir }}/kubernetes"
+        state: directory
+        mode: '0755'
+
+    - name: 解压 Kubernetes 源码
+      unarchive:
+        src: "{{ tmp_dir }}/kubernetes.tar.gz"
+        dest: "{{ tmp_dir }}/kubernetes"
+        remote_src: yes
+        extra_opts: "--strip-components=1"
+
+    - name: 修改 CA 证书有效期（100 年）
+      lineinfile:
+        path: "{{ tmp_dir }}/kubernetes/staging/src/k8s.io/client-go/util/cert/cert.go"
+        regexp: '^(.*NotAfter:.*now\.Add\(duration365d \* )10(\).UTC\(\),.*)$'
+        line: '\g<1>100\g<2>'
+        backrefs: yes
+
+    - name: 修改 API-SERVER 等证书有效期（100 年）
+      replace:
+        path: "{{ tmp_dir }}/kubernetes/cmd/kubeadm/app/constants/constants.go"
+        regexp: '(CertificateValidity = time\.Hour \* 24 \* 365)( \* 100)?'
+        replace: '\1 * 100'
+
+    - name: 编译 kubeadm（带重试）
+      shell: |
+        export GOPROXY=https://goproxy.cn
+        export GO111MODULE=on
+        cd {{ tmp_dir }}/kubernetes
+        make all WHAT=cmd/kubeadm GOFLAGS=-v
+      register: build_result
+      until: build_result is succeeded
+      retries: 3
+      delay: 180
+  when: is_primary_master_node and not kubeadm_binary_exists
+
+- name: 事先创建远程主机上的目录
+  file:
+    path: "{{ tmp_dir }}/kubernetes/_output/local/go/bin"
+    state: directory
+    mode: '0755'
+  when: inventory_hostname != groups['k8s'][0]  # 排除主节点
+
+- name: "从主节点分发 kubeadm 到所有k8s节点"
+  synchronize:
+    src: "{{ tmp_dir }}/kubernetes/_output/local/go/bin/kubeadm"
+    dest: "{{ tmp_dir }}/kubernetes/_output/local/go/bin/kubeadm"
+  when: inventory_hostname != groups['k8s'][0]  # 排除主节点
+
+- name: "设置 kubeadm 文件权限"
+  file:
+    path: "{{ tmp_dir }}/kubernetes/_output/local/go/bin/kubeadm"
+    mode: '0755'
+  when: inventory_hostname != groups['k8s'][0]  # 排除主节点

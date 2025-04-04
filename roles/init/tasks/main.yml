@@ -5,4 +5,5 @@
 - include: 3_install_package.yml
 - include: 4_setting_ssh.yml
 - include: 5_setting_ntpd.yml
-- include: 6_module.yaml
+- include: 6_module.yml
+- include: 7_build_kubeadm.yml

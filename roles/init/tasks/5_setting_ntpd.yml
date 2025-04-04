@@ -1,10 +1,4 @@
 ---
-- name: 安装 NTP 服务
-  apt:
-    name: ntp
-    state: present
-    update_cache: yes
-
 - name: 删除默认的 NTP 服务器配置
   lineinfile:
     path: /etc/ntp.conf

@@ -1,14 +1,14 @@
 ---
 - name: 1.系统初始化
   gather_facts: true
-  hosts: all
+  hosts: newnode
   roles:
     - init
   tags: init
 
 - name: 2.K8S 主机名
   gather_facts: true
-  hosts: k8s
+  hosts: newnode
   roles:
     - hostname
   tags: hostname
