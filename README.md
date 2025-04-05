@@ -457,9 +457,14 @@ root@ubuntu:~# ansible-playbook -i hosts.ini add-node.yml
 
 ```sh
 # 修改 hosts 添加
-[root@k8s-master1 ~]# vim /etc/hosts
-127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
-::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+root@ubuntu:~# vim /etc/hosts
+127.0.0.1       localhost
+
+# The following lines are desirable for IPv6 capable hosts
+::1     localhost       ip6-localhost   ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+
 # k8s 高可用 VIP
 11.0.1.20   apiserver.cluster.local
 
@@ -483,7 +488,7 @@ root@ubuntu:~# ansible-playbook -i hosts.ini add-node.yml
 127.0.0.1   registry.example.com
 
 # 统一 hosts
-[root@k8s-master1 ~]# ansible -i hosts.ini all -m copy -a "src=/etc/hosts dest=/etc/hosts mode=0644" --become
+root@ubuntu:~# ansible -i hosts.ini all -m copy -a "src=/etc/hosts dest=/etc/hosts mode=0644" --become
 ```
 
 ```sh
