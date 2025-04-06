@@ -1,0 +1,13 @@
+[Unit]
+Description=ETCD Backup Service
+After=network.target
+Wants=etcd.service
+
+[Service]
+Type=oneshot
+User=etcd
+ExecStart=/usr/local/bin/etcd-backup.sh
+Environment="ETCDCTL_API=3"
+
+[Install]
+WantedBy=multi-user.target

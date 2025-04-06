@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# 配置变量
+ETCD_CA="{{ etcd_ssl }}/ca.pem"
+ETCD_CERT="{{ etcd_ssl }}/server.pem"
+ETCD_KEY="{{ etcd_ssl }}/server-key.pem"
+ETCD_ENDPOINTS="{% for host in groups['etcd'] %}https://{{ hostvars[host].ansible_default_ipv4.address }}:2379{% if not loop.last %},{% endif %}{% endfor %}"
+BACKUP_DIR="{{ etcd_backup_dir | default('/var/lib/etcd-backup') }}"
+KEEP_DAYS="{{ etcd_backup_keep_days | default(7) }}"
+
+# 创建备份目录
+mkdir -p "${BACKUP_DIR}"
+
+# 选择第一个健康的节点进行备份
+IFS=',' read -ra ENDPOINTS <<< "${ETCD_ENDPOINTS}"
+for endpoint in "${ENDPOINTS[@]}"; do
+    if ETCDCTL_API=3 etcdctl --cacert="${ETCD_CA}" \
+       --cert="${ETCD_CERT}" --key="${ETCD_KEY}" \
+       --endpoints="${endpoint}" endpoint health &>/dev/null; then
+        HEALTHY_ENDPOINT="${endpoint}"
+        break
+    fi
+done
+
+if [ -z "${HEALTHY_ENDPOINT}" ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - No healthy etcd endpoint available, skipping backup" >&2
+    exit 1
+fi
+
+# 创建备份文件名
+BACKUP_FILE="${BACKUP_DIR}/etcd-snapshot-$(date +%Y%m%d-%H%M%S).db"
+
+# 执行备份
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting etcd backup to ${BACKUP_FILE} using endpoint ${HEALTHY_ENDPOINT}"
+if ETCDCTL_API=3 etcdctl --cacert="${ETCD_CA}" \
+   --cert="${ETCD_CERT}" --key="${ETCD_KEY}" \
+   --endpoints="${HEALTHY_ENDPOINT}" snapshot save "${BACKUP_FILE}"; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup completed successfully"
+    
+    # 检查备份文件状态
+    ETCDCTL_API=3 etcdctl --write-out=table snapshot status "${BACKUP_FILE}"
+    
+    # 清理旧备份
+    find "${BACKUP_DIR}" -name 'etcd-snapshot-*.db' -mtime +${KEEP_DAYS} -delete
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Old backups older than ${KEEP_DAYS} days cleaned"
+else
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup failed" >&2
+    exit 1
+fi

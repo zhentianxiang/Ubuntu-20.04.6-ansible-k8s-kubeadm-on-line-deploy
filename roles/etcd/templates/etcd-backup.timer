@@ -1,0 +1,10 @@
+[Unit]
+Description=Run etcd backup hourly
+
+[Timer]
+OnCalendar=hourly
+AccuracySec=1m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
