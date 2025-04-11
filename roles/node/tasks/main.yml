@@ -81,3 +81,15 @@
 - name: 加入集群
   ignore_errors: yes
   shell: "/bin/bash {{ tmp_dir }}/node-join.sh >/dev/null 2>&1"
+
+- name: 重启 containerd 服务
+  systemd:
+    name: containerd
+    state: restarted
+
+- name: 重启kubelet
+  systemd:
+    name: kubelet
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
