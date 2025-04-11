@@ -35,79 +35,142 @@
     - "{{ calico_app }}"
     - "{{ openebs_app }}"
 
-- name: 下载 Calico YAML 文件
-  get_url:
-    url: "{{ ghproxy }}/https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
-    dest: "{{ calico_app }}/calico-{{ calico_version }}.yaml"
+# 增强版 Calico 下载任务
+- name: 处理 Calico 网络插件
+  block:
+    - name: 检查 Calico 文件是否已存在
+      stat:
+        path: "{{ calico_app }}/calico-{{ calico_version }}.yaml"
+      register: calico_file
+      
+    - name: 下载 Calico YAML 文件（带重试）
+      get_url:
+        url: "{{ ghproxy }}/https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+        dest: "{{ calico_app }}/calico-{{ calico_version }}.yaml"
+        timeout: 30
+        validate_certs: no
+        checksum: "sha256:{{ calico_checksum | default(omit) }}"
+        headers:
+          User-Agent: "Ansible/{{ ansible_version }}"
+      register: download_result
+      until: download_result is succeeded
+      retries: 5
+      delay: 10
+      when: 
+        - calico_version is defined
+        - not calico_file.stat.exists | default(false)
+
+    - name: 修改 Calico YAML 文件，添加 IP_AUTODETECTION_METHOD
+      shell: |
+        export PATH=$PATH:/usr/local/bin
+        sed -i "/k8s,bgp/a\            - name: IP_AUTODETECTION_METHOD\n              value: {{ calico_network }}" "{{ calico_app }}/calico-{{ calico_version }}.yaml"
+      when: 
+        - calico_version is defined
+        - download_result is succeeded or calico_file.stat.exists
+
+    - name: 部署 Calico 网络插件
+      shell: kubectl apply -f "{{ calico_app }}/calico-{{ calico_version }}.yaml"
+      when: calico_version is defined
+
+  rescue:
+    - name: 清理可能下载的不完整文件
+      file:
+        path: "{{ calico_app }}/calico-{{ calico_version }}.yaml"
+        state: absent
+      ignore_errors: yes
+    - fail:
+        msg: "Calico 处理失败，请检查网络连接或代理设置"
   when: calico_version is defined
 
-- name: 修改 Calico YAML 文件，添加 IP_AUTODETECTION_METHOD
-  shell: |
-    sed -i "/k8s,bgp/a\            - name: IP_AUTODETECTION_METHOD\n              value: {{ calico_network }}" "{{ calico_app }}/calico-{{ calico_version }}.yaml"
-  when: calico_version is defined
+# 增强版 ingress-nginx 下载任务
+- name: 处理 ingress-nginx
+  block:
+    - name: 检查 ingress-nginx 文件是否已存在
+      stat:
+        path: "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+      register: ingress_file
+      
+    - name: 下载 ingress-nginx YAML 文件（带重试）
+      get_url:
+        url: "{{ ghproxy }}/https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-{{ ingress_version }}/deploy/static/provider/cloud/deploy.yaml"
+        dest: "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+        timeout: 30
+        validate_certs: no
+        checksum: "sha256:{{ ingress_checksum | default(omit) }}"
+        headers:
+          User-Agent: "Ansible/{{ ansible_version }}"
+      register: download_result
+      until: download_result is succeeded
+      retries: 5
+      delay: 10
+      when: 
+        - ingress_version is defined
+        - not ingress_file.stat.exists | default(false)
 
-- name: 下载 ingress-nginx YAML 文件
-  get_url:
-    url: "{{ ghproxy }}/https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-{{ ingress_version }}/deploy/static/provider/cloud/deploy.yaml"
-    dest: "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+    - name: 修改 ingress-nginx YAML 文件
+      shell: |
+        export PATH=$PATH:/usr/local/bin
+        awk '
+          /kind: Deployment/ { in_deployment=1; print $0; next }
+          in_deployment && /containers:/ { 
+            print "      hostNetwork: true"; 
+            print $0; 
+            next 
+          }
+          in_deployment && /kubernetes.io\/os: linux/ { 
+            print "        {{ ingres_label }}"; 
+            next 
+          }
+          in_deployment && /kind:/ && $0 !~ /Deployment/ { in_deployment=0 }
+          { print $0 }
+        ' "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml" > temp.yaml && mv temp.yaml "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+      when: 
+        - ingress_version is defined
+        - download_result is succeeded or ingress_file.stat.exists
+
+    - name: 部署 ingress-nginx
+      shell: kubectl apply -f "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+      when: ingress_version is defined
+
+  rescue:
+    - name: 清理可能下载的不完整文件
+      file:
+        path: "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+        state: absent
+      ignore_errors: yes
+    - fail:
+        msg: "ingress-nginx 处理失败，请检查网络连接或代理设置"
   when: ingress_version is defined
 
-- name: 修改 ingress-nginx YAML 文件，添加 hostNetwork 和 nodeSelector
-  shell: |
-    awk '
-      # 标记 "kind: Deployment" 之后开始修改
-      /kind: Deployment/ { in_deployment=1; print $0; next }
-
-      # 在 Deployment 部分插入 hostNetwork: true
-      in_deployment && /containers:/ { 
-        print "      hostNetwork: true"; 
-        print $0; 
-        next 
-      }
-
-      # 在 Deployment 部分修改 nodeSelector
-      in_deployment && /kubernetes.io\/os: linux/ { 
-        print "        {{ ingres_label }}"; 
-        next 
-      }
-
-      # 当遇到 "kind:" 但不是 "Deployment" 时，结束修改
-      in_deployment && /kind:/ && $0 !~ /Deployment/ { in_deployment=0 }
-
-      # 保持其他内容不变
-      { print $0 }
-    ' "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml" > temp.yaml && mv temp.yaml "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
-  when: ingress_version is defined
-
-- name: 部署 Calico 网络插件
-  shell: kubectl apply -f "{{ calico_app }}/calico-{{ calico_version }}.yaml"
-  when: calico_version is defined
-
-- name: 部署 ingress-nginx
-  shell: kubectl apply -f "{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
-  when: ingress_version is defined
-
-- name: 拷贝 openeba yaml 文件
+# 其余原有任务保持不变
+- name: 拷贝 openebs yaml 文件
   template: src="openebs/{{item.key}}" dest="{{openebs_app}}/{{item.value}}"
   with_dict:
     - {"openebs-operator.yaml.j2":"openebs-operator.yaml"}
 
 - name: 等待 Kubernetes API 服务器准备好
   wait_for:
-    host: "{{ inventory_hostname }}"  # 目标主机的名称
-    port: 6443  # Kubernetes API 服务器的端口
+    host: "{{ inventory_hostname }}"
+    port: 6443
     state: started
+    timeout: 300  # 增加等待超时时间
   delegate_to: localhost
-  ignore_errors: yes  # 忽略错误，因为在 Kubernetes 启动之前可能会超时
+  ignore_errors: yes
 
 - name: 执行 kubectl apply
   shell: |
+    export PATH=$PATH:/usr/local/bin
     for dir in $(find . -type f -name "*.yaml" -exec dirname {} \; | sort -u); do kubectl apply -f "$dir"; done
   args:
     chdir: "{{ k8s_app }}"
+  register: apply_result
+  retries: 3
+  delay: 10
+  until: apply_result is succeeded
 
 - name: 打印为 ingress 打标签命令
   shell: |
+    export PATH=$PATH:/usr/local/bin
     echo "kubectl label nodes xxxx ingress/type=nginx 部署完需要重新 kubectl apply -f 提交一下配置文件, 因为默认没打标签有些配置没提交上"
   register: ingress
   changed_when: false

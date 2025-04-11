@@ -119,6 +119,7 @@
 
     - name: 生成CA证书
       shell: |
+        export PATH=$PATH:/usr/local/bin
         cfssl gencert -initca ca-csr.json | cfssl-json -bare ca
       args:
         chdir: "{{ etcd_ssl }}"
@@ -137,6 +138,7 @@
 
     - name: 生成服务器证书
       shell: |
+        export PATH=$PATH:/usr/local/bin
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem \
         -config=ca-config.json -profile=www server-csr.json | cfssl-json -bare server
       args:
@@ -145,16 +147,25 @@
       register: server_cert_gen
       changed_when: "'generated' in server_cert_gen.stdout"
 
+    - name: 检查证书文件是否存在
+      stat:
+        path: "{{ etcd_ssl }}/{{ item }}"
+      register: cert_file_stat
+      loop:
+        - ca.pem
+        - ca-key.pem
+        - server.pem
+        - server-key.pem
+      loop_control:
+        label: "{{ item }}"
+      when: is_primary_etcd_node and (not cert_exists.stat.exists or force_cert_gen|default(false))
+
     - name: 验证生成的证书
       assert:
         that:
           - item.stat.exists
-        fail_msg: "关键证书文件 {{ item.file }} 未生成"
-      loop: 
-        - "{{ {'file': 'ca.pem', 'stat': stat(etcd_ssl + '/ca.pem')} }}"
-        - "{{ {'file': 'ca-key.pem', 'stat': stat(etcd_ssl + '/ca-key.pem')} }}"
-        - "{{ {'file': 'server.pem', 'stat': stat(etcd_ssl + '/server.pem')} }}"
-        - "{{ {'file': 'server-key.pem', 'stat': stat(etcd_ssl + '/server-key.pem')} }}"
+        fail_msg: "关键证书文件 {{ item.item }} 未生成"
+      loop: "{{ cert_file_stat.results }}"
       when: is_primary_etcd_node and (not cert_exists.stat.exists or force_cert_gen|default(false))
 
   rescue:
