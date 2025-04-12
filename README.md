@@ -455,7 +455,7 @@ root@ubuntu:~# ansible-playbook -i hosts.ini multi-master-ha-deploy.yml   # 集�
 ### 4. 验证集群
 
 ```
-root@ubuntu:~# etcdctl --cacert=/etc/etcd/ssl/ca.pem --cert=/etc/etcd/ssl/server.pem --key=/etc/etcd/ssl/server-key.pem --endpoints="https://etcd1:2379,https://etcd2:2379,https://etcd3:2379" member list -w table
+[root@localhost ~]# sudo etcdctl --cacert=/etc/etcd/ssl/etcd-ca.pem --cert=/etc/etcd/ssl/etcd-server.pem --key=/etc/etcd/ssl/etcd-server-key.pem --endpoints="https://etcd1:2379,https://etcd2:2379,https://etcd3:2379" member list -w table
 +------------------+---------+-------+------------------------+------------------------+------------+
 |        ID        | STATUS  | NAME  |       PEER ADDRS       |      CLIENT ADDRS      | IS LEARNER |
 +------------------+---------+-------+------------------------+------------------------+------------+
@@ -464,16 +464,16 @@ root@ubuntu:~# etcdctl --cacert=/etc/etcd/ssl/ca.pem --cert=/etc/etcd/ssl/server
 | 777a9bac189012d3 | started | etcd2 | https://11.0.1.15:2380 | https://11.0.1.15:2379 |      false |
 +------------------+---------+-------+------------------------+------------------------+------------+
 
-root@ubuntu:~# etcdctl --cacert=/etc/etcd/ssl/ca.pem --cert=/etc/etcd/ssl/server.pem --key=/etc/etcd/ssl/server-key.pem --endpoints="https://etcd1:2379,https://etcd2:2379,https://etcd3:2379" endpoint status -w table
+[root@localhost ~]# sudo etcdctl --cacert=/etc/etcd/ssl/etcd-ca.pem --cert=/etc/etcd/ssl/etcd-server.pem --key=/etc/etcd/ssl/etcd-server-key.pem --endpoints="https://etcd1:2379,https://etcd2:2379,https://etcd3:2379" endpoint status -w table
 +--------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
 |      ENDPOINT      |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS |
 +--------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
-| https://etcd1:2379 |   d1f1c4b9eec273 |   3.5.1 |  6.2 MB |     false |      false |         5 |       7688 |               7688 |        |
-| https://etcd2:2379 | 777a9bac189012d3 |   3.5.1 |  6.2 MB |     false |      false |         5 |       7688 |               7688 |        |
-| https://etcd3:2379 | 517f93955c7fe7d3 |   3.5.1 |  6.2 MB |      true |      false |         5 |       7688 |               7688 |        |
+| https://etcd1:2379 |   d1f1c4b9eec273 |   3.5.9 |  6.2 MB |     false |      false |         5 |       7688 |               7688 |        |
+| https://etcd2:2379 | 777a9bac189012d3 |   3.5.9 |  6.2 MB |     false |      false |         5 |       7688 |               7688 |        |
+| https://etcd3:2379 | 517f93955c7fe7d3 |   3.5.9 |  6.2 MB |      true |      false |         5 |       7688 |               7688 |        |
 +--------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
 
-root@ubuntu:~# etcdctl --cacert=/etc/etcd/ssl/ca.pem --cert=/etc/etcd/ssl/server.pem --key=/etc/etcd/ssl/server-key.pem --endpoints="https://etcd1:2379,https://etcd2:2379,https://etcd3:2379" endpoint health --write-out=table
+[root@localhost ~]# sudo etcdctl --cacert=/etc/etcd/ssl/etcd-ca.pem --cert=/etc/etcd/ssl/etcd-server.pem --key=/etc/etcd/ssl/etcd-server-key.pem --endpoints="https://etcd1:2379,https://etcd2:2379,https://etcd3:2379" endpoint health --write-out=table
 +--------------------+--------+-------------+-------+
 |      ENDPOINT      | HEALTH |    TOOK     | ERROR |
 +--------------------+--------+-------------+-------+
@@ -481,12 +481,13 @@ root@ubuntu:~# etcdctl --cacert=/etc/etcd/ssl/ca.pem --cert=/etc/etcd/ssl/server
 | https://etcd1:2379 |   true | 15.752313ms |       |
 | https://etcd3:2379 |   true | 17.795671ms |       |
 +--------------------+--------+-------------+-------+
+
 # 查看 ETCD 备份情况
-root@ubuntu:~# systemctl status etcd-backup.timer
-root@ubuntu:~# systemctl status etcd-backup.service
-root@ubuntu:~# ls -lh /var/lib/etcd-backup/
-root@ubuntu:~# ETCDCTL_API=3 etcdctl --cacert=/etc/etcd/ssl/ca.pem \
-  --cert=/etc/etcd/ssl/server.pem --key=/etc/etcd/ssl/server-key.pem \
+[root@localhost ~]# systemctl status etcd-backup.timer
+[root@localhost ~]# systemctl status etcd-backup.service
+[root@localhost ~]# ls -lh /var/lib/etcd-backup/
+[root@localhost ~]# ETCDCTL_API=3 etcdctl --cacert=/etc/etcd/ssl/etcd-ca.pem \
+  --cert=/etc/etcd/ssl/etcd-server.pem --key=/etc/etcd/ssl/etcd-server-key.pem \
   --endpoints=https://etcd1:2379 snapshot status /var/lib/etcd-backup/etcd-snapshot-最新文件名.db
 
 root@ubuntu:~# kubectl get cs
