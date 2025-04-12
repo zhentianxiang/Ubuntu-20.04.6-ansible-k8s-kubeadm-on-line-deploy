@@ -1,0 +1,47 @@
+# etcd configuration file - YAML format
+
+# Member configuration
+name: '{{ inventory_hostname }}'
+data-dir: '{{ etcd_data }}'
+snapshot-count: {{ etcd_snapshot_count | default(50000) }}
+heartbeat-interval: {{ etcd_heartbeat_interval | default(200) }}
+election-timeout: {{ etcd_election_timeout | default(2500) }}
+quota-backend-bytes: {{ etcd_quota_backend_bytes | default(5500000000) }}
+auto-compaction-retention: '{{ etcd_auto_compaction_retention | default("1") }}'
+
+# Network configuration
+listen-peer-urls: 'https://{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:2380'
+listen-client-urls: 'https://{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:2379{% if etcd_enable_localhost | default(true) %},https://127.0.0.1:2379{% endif %}'
+
+# Cluster configuration
+initial-advertise-peer-urls: 'https://{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:2380'
+advertise-client-urls: 'https://{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:2379'
+initial-cluster: '{% for host in groups['etcd'] %}{{ host }}=https://{{ hostvars[host].ansible_default_ipv4.address }}:2380{% if not loop.last %},{% endif %}{% endfor %}'
+initial-cluster-token: '{{ etcd_cluster_token | default("etcd-cluster") }}'
+initial-cluster-state: '{{ etcd_initial_cluster_state | default("new") }}'
+
+# Security configuration
+client-transport-security:
+  cert-file: '{{ etcd_ssl }}/{{ etcd_server_cert | default("etcd-server.pem") }}'
+  key-file: '{{ etcd_ssl }}/{{ etcd_server_key | default("etcd-server-key.pem") }}'
+  client-cert-auth: {{ etcd_client_cert_auth | default(true) }}
+  trusted-ca-file: '{{ etcd_ssl }}/{{ etcd_ca_cert | default("etcd-ca.pem") }}'
+  auto-tls: {{ etcd_auto_tls | default(false) }}
+
+peer-transport-security:
+  cert-file: '{{ etcd_ssl }}/{{ etcd_server_cert | default("etcd-server.pem") }}'
+  key-file: '{{ etcd_ssl }}/{{ etcd_server_key | default("etcd-server-key.pem") }}'
+  peer-client-cert-auth: {{ etcd_peer_client_cert_auth | default(true) }}
+  trusted-ca-file: '{{ etcd_ssl }}/{{ etcd_ca_cert | default("etcd-ca.pem") }}'
+  auto-tls: {{ etcd_peer_auto_tls | default(false) }}
+
+# Logging configuration
+log-level: '{{ etcd_log_level | default("warn") }}'
+log-outputs: ['{{ etcd_log_output | default("stderr") }}']
+
+# Advanced configuration
+enable-pprof: {{ etcd_enable_pprof | default(false) }}
+enable-v2: {{ etcd_enable_v2 | default(false) }}
+max-snapshots: {{ etcd_max_snapshots | default(5) }}
+max-wals: {{ etcd_max_wals | default(5) }}
+strict-reconfig-check: {{ etcd_strict_reconfig_check | default(false) }}

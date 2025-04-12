@@ -8,15 +8,7 @@ Wants=network-online.target
 Type=notify
 User=etcd
 Group=etcd
-EnvironmentFile=/etc/etcd/etcd.conf
-ExecStart=/usr/bin/etcd \
-  --cert-file={{ etcd_ssl }}/server.pem \
-  --key-file={{ etcd_ssl }}/server-key.pem \
-  --peer-cert-file={{ etcd_ssl }}/server.pem \
-  --peer-key-file={{ etcd_ssl }}/server-key.pem \
-  --trusted-ca-file={{ etcd_ssl }}/ca.pem \
-  --peer-trusted-ca-file={{ etcd_ssl }}/ca.pem \
-  --logger=zap
+ExecStart=/usr/local/bin/etcd --config-file={{ etcd_conf }}etcd.config.yml
 Restart=on-failure
 LimitNOFILE=65536
 

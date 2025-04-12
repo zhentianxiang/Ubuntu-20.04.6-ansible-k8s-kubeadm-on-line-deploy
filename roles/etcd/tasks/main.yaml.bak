@@ -256,3 +256,58 @@
     enabled: yes
   become: yes
   when: "'etcd' in group_names"
+
+- name: 设置 etcd 备份系统
+  block:
+    - name: 创建备份目录
+      file:
+        path: "{{ etcd_backup_dir | default('/var/lib/etcd-backup') }}"
+        state: directory
+        owner: etcd
+        group: etcd
+        mode: '0750'
+
+    - name: 安装 etcd 备份脚本
+      template:
+        src: templates/etcd-backup.sh.j2
+        dest: /usr/local/bin/etcd-backup.sh
+        owner: etcd
+        group: etcd
+        mode: '0750'
+
+    - name: 安装 etcd-backup.service
+      template:
+        src: templates/etcd-backup.service.j2
+        dest: /etc/systemd/system/etcd-backup.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: 安装 etcd-backup.timer
+      template:
+        src: templates/etcd-backup.timer.j2
+        dest: /etc/systemd/system/etcd-backup.timer
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: 重载 systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: 启用并启动 etcd-backup.timer
+      systemd:
+        name: etcd-backup.timer
+        enabled: yes
+        state: started
+
+    - name: 执行首次备份
+      command: /usr/local/bin/etcd-backup.sh
+      register: backup_result
+      changed_when: false
+      ignore_errors: yes
+
+    - name: 显示首次备份结果
+      debug:
+        var: backup_result
+  when: "'etcd' in group_names"

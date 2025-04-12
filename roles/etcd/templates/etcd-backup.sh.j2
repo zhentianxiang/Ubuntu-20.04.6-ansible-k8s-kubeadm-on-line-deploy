@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # 配置变量
-ETCD_CA="{{ etcd_ssl }}/ca.pem"
-ETCD_CERT="{{ etcd_ssl }}/server.pem"
-ETCD_KEY="{{ etcd_ssl }}/server-key.pem"
+ETCD_CA="{{ etcd_ssl }}/etcd-ca.pem"
+ETCD_CERT="{{ etcd_ssl }}/etcd-server.pem"
+ETCD_KEY="{{ etcd_ssl }}/etcd-server-key.pem"
 ETCD_ENDPOINTS="{% for host in groups['etcd'] %}https://{{ hostvars[host].ansible_default_ipv4.address }}:2379{% if not loop.last %},{% endif %}{% endfor %}"
 BACKUP_DIR="{{ etcd_backup_dir | default('/var/lib/etcd-backup') }}"
 KEEP_DAYS="{{ etcd_backup_keep_days | default(7) }}"
