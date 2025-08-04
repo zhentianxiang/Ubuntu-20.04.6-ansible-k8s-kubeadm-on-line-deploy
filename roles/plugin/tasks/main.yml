@@ -144,7 +144,7 @@
 - name: 拷贝 openebs yaml 文件
   template: src="openebs/{{item.key}}" dest="{{openebs_app}}/{{item.value}}"
   with_dict:
-    - {"openebs-operator.yaml.j2":"openebs-operator.yaml"}
+    - {"openebs-hostpath.yaml.j2":"openebs-hostpath.yaml.j2"}
 
 - name: 等待 Kubernetes API 服务器准备好
   wait_for:
