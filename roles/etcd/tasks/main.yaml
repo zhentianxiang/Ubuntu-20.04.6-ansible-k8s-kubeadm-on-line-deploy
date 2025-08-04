@@ -52,16 +52,16 @@
       until: download_result is succeeded
       when: "'etcd' in group_names and is_primary_etcd_node and not cfssl_file.stat.exists"
     
-    - name: 检查 cfssljson 是否已存在
+    - name: 检查 cfssl-json 是否已存在
       stat:
-        path: "/usr/local/bin/cfssljson"
+        path: "/usr/local/bin/cfssl-json"
       register: cfssl_json_file
       when: "'etcd' in group_names and is_primary_etcd_node"
     
-    - name: 下载 cfssljson
+    - name: 下载 cfssl-json
       get_url:
-        url: "https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64"
-        dest: /usr/local/bin/cfssljson
+        url: "https://pkg.cfssl.org/R1.2/cfssl-json_linux-amd64"
+        dest: /usr/local/bin/cfssl-json
         mode: '0755'
       register: download_result
       retries: 10
@@ -125,7 +125,7 @@
     - name: 生成etcd CA 证书和 CA 证书的 key
       shell: |
         export PATH=$PATH:/usr/local/bin
-        cfssl gencert -initca etcd-ca-csr.json | cfssljson -bare etcd-ca
+        cfssl gencert -initca etcd-ca-csr.json | cfssl-json -bare etcd-ca
       args:
         chdir: "{{ etcd_ssl }}"
       when: is_primary_etcd_node and (not cert_exists.stat.exists or force_cert_gen|default(false))
@@ -145,7 +145,7 @@
       shell: |
         export PATH=$PATH:/usr/local/bin
         cfssl gencert -ca=etcd-ca.pem -ca-key=etcd-ca-key.pem \
-        -config=ca-config.json -profile=kubernetes etcd-server-csr.json | cfssljson -bare etcd-server
+        -config=ca-config.json -profile=kubernetes etcd-server-csr.json | cfssl-json -bare etcd-server
       args:
         chdir: "{{ etcd_ssl }}"
       when: is_primary_etcd_node and (not cert_exists.stat.exists or force_cert_gen|default(false))
