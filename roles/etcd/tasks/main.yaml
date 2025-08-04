@@ -8,7 +8,7 @@
       when: "'etcd' in group_names"
 
     - name: "在主ETCD节点上安装OpenSSL"
-      ansible.builtin.yum:
+      ansible.builtin.package:
         name: openssl
         state: present
       when: "'etcd' in group_names"

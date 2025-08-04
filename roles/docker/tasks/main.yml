@@ -58,11 +58,6 @@
   apt:
     update_cache: yes
   when: ansible_facts['os_family'] == "Debian"
-- name: Add docker-ce repository
-  raw: "{{ item }}"
-  with_items:
-    - "curl -fsSL {{ docker_gpg_key }} | sudo apt-key add -"
-    - "add-apt-repository {{ docker_ce_repo }}"
 
 - name: Uninstall Docker CE if it's already installed
   package:
@@ -95,18 +90,18 @@
   retries: 5
   delay: 30
 
+- name: reload systemd
+  become: yes
+  command: systemctl daemon-reexec
+
 - name: Setup docker daemon
   template:
     src: "daemon.json.j2"
     dest: "/etc/docker/daemon.json"
+  notify: Restart Docker
 
 - name: mkdir docker service dir
   raw: mkdir -p /etc/systemd/system/docker.service.d
-
-- name: restart docker-ce
-  systemd:
-    name: docker
-    state: restarted
 
 - name: 查看状态
   shell: docker info
