@@ -1,19 +1,39 @@
-- name: "检查当前节点是否为主k8s-master1节点"
+- name: "检查当前节点是否为主 k8s-master1 节点"
   ansible.builtin.set_fact:
     is_primary_master_node: "{{ inventory_hostname == groups['master'][0] }}"
 
 - name: 创建临时目录
-  file: 
+  file:
     path: "{{ tmp_dir }}"
     state: directory
     mode: '0755'
   when: is_primary_master_node
 
-- name: 下载并安装 Go 环境
-  shell: |
-    wget https://go.dev/dl/go1.20.4.linux-amd64.tar.gz -O /tmp/go.tar.gz
-    tar -C /usr/local -xzf /tmp/go.tar.gz
-  args:
+- name: 检查 Go 安装文件是否存在
+  stat:
+    path: "{{ tmp_dir }}/go1.20.4.linux-amd64.tar.gz"
+  register: go_archive_status
+  when: is_primary_master_node
+
+- name: 下载 Go 安装包（延长超时，若未存在）
+  get_url:
+    url: "https://go.dev/dl/go1.20.4.linux-amd64.tar.gz"
+    dest: "{{ tmp_dir }}/go1.20.4.linux-amd64.tar.gz"
+    mode: '0644'
+    timeout: 60
+  when:
+    - is_primary_master_node
+    - not go_archive_status.stat.exists
+  register: download_result
+  retries: 3
+  delay: 10
+  until: download_result is succeeded
+
+- name: 解压 Go 到 /usr/local（仅一次）
+  unarchive:
+    src: "{{ tmp_dir }}/go1.20.4.linux-amd64.tar.gz"
+    dest: /usr/local
+    remote_src: yes
     creates: /usr/local/go
   when: is_primary_master_node
 
