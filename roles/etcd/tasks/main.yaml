@@ -308,7 +308,7 @@
     
     - name: 赋予可执行权限
       file:
-        path: /usr/bin/{{ item }}
+        path: /usr/local/bin/{{ item }}
         mode: '0755'
         state: file
       loop:
