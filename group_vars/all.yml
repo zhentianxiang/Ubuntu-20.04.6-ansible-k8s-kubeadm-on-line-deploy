@@ -8,6 +8,14 @@ docker_gpg_key: ' http://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg'
 docker_ce: 'docker-ce=5:20.10.10~3-0~ubuntu-focal'
 docker_ce_cli: 'docker-ce-cli=5:20.10.10~3-0~ubuntu-focal'
 
+ubuntu_mirror: "http://mirrors.aliyun.com"
+ubuntu_release: "{{ ansible_distribution_release }}"
+apt_source_template: |
+  deb {{ ubuntu_mirror }}/ubuntu {{ ubuntu_release }} main restricted universe multiverse
+  deb {{ ubuntu_mirror }}/ubuntu {{ ubuntu_release }}-security main restricted universe multiverse
+  deb {{ ubuntu_mirror }}/ubuntu {{ ubuntu_release }}-updates main restricted universe multiverse
+  deb {{ ubuntu_mirror }}/ubuntu {{ ubuntu_release }}-backports main restricted universe multiverse
+
 # kubernetes 安装信息
 kube_gpg_key: "https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg"
 kube_repo: "deb [arch=amd64] https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main"

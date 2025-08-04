@@ -1,19 +1,34 @@
----
-- name: 备份原有的repo源
-  ignore_errors: yes
-  shell: mkdir -p /etc/apt/bak && mv /etc/apt/sources.list /etc/apt/bak 2>/dev/null || true
+- name: 检查是否已备份 sources.list
+  stat:
+    path: /etc/apt/sources.list.bak
+  register: sources_backup_status
 
-- name: 添加阿里镜像源
+- name: 检查 sources.list 是否存在
+  stat:
+    path: /etc/apt/sources.list
+  register: sources_list_status
+
+- name: 备份 sources.list（如果存在且未备份，始终显示 changed）
+  command: mv /etc/apt/sources.list /etc/apt/sources.list.bak
+  when:
+    - sources_list_status.stat.exists
+    - not sources_backup_status.stat.exists
+  changed_when: true
+
+- name: 写入新的 Ubuntu 阿里云镜像源（使用变量渲染）
   copy:
-    src: sources.list
+    content: "{{ apt_source_template }}"
     dest: /etc/apt/sources.list
+    owner: root
+    group: root
+    mode: '0644'
 
-- name: 更新镜像源
+- name: 更新 apt 缓存
   apt:
     update_cache: yes
   throttle: 1
 
-- name: 安装必需的软件包
+- name: 安装必需软件包
   apt:
     name:
       - apt-transport-https
