@@ -298,7 +298,7 @@ newnode
 root@ubuntu:~# ansible -i hosts.ini etcd -m copy -a "src=./roles/etcd/files/cfssl_linux-amd64 dest=/usr/local/bin/cfssl mode=0755" --become
 root@ubuntu:~# ansible -i hosts.ini etcd -m copy -a "src=./roles/etcd/files/cfssljson_linux-amd64 dest=/usr/local/bin/cfssl-json mode=0755" --become
 root@ubuntu:~# ansible -i hosts.ini etcd -m copy -a "src=./roles/etcd/files/cfssl-certinfo_linux-amd64 dest=/usr/local/bin/cfssl-certinfo mode=0755" --become
-root@ubuntu:~# ansible -i hosts.ini etcd -m copy -a "src=./roles/etcd/files/etcd-v3.5.1-linux-amd64.tar.gz dest=/usr/local/src/etcd-v3.5.1-linux-amd64.tar.gz mode=0644" --become
+root@ubuntu:~# ansible -i hosts.ini etcd -m copy -a "src=./roles/etcd/files/etcd-v3.5.9-linux-amd64.tar.gz dest=/usr/local/src/etcd-v3.5.9-linux-amd64.tar.gz mode=0644" --become
 ```
 
 
