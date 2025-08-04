@@ -15,19 +15,21 @@
   register: go_archive_status
   when: is_primary_master_node
 
-- name: 下载 Go 安装包（延长超时，若未存在）
-  get_url:
-    url: "https://go.dev/dl/go1.20.4.linux-amd64.tar.gz"
-    dest: "{{ tmp_dir }}/go1.20.4.linux-amd64.tar.gz"
-    mode: '0644'
-    timeout: 60
+- name: 下载 Go 安装包（使用 wget，带重试）
+  shell: |
+    wget --tries=3 --waitretry=10 --timeout=60 \
+         -O "{{ tmp_dir }}/go1.20.4.linux-amd64.tar.gz" \
+         "https://go.dev/dl/go1.20.4.linux-amd64.tar.gz" && \
+    chmod 0644 "{{ tmp_dir }}/go1.20.4.linux-amd64.tar.gz"
+  args:
+    executable: /bin/bash
+  register: download_result
+  until: download_result.rc == 0
+  retries: 3
+  delay: 10
   when:
     - is_primary_master_node
     - not go_archive_status.stat.exists
-  register: download_result
-  retries: 3
-  delay: 10
-  until: download_result is succeeded
 
 - name: 解压 Go 到 /usr/local（仅一次）
   unarchive:
