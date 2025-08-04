@@ -232,7 +232,7 @@ k8s_ingress_version_map:
   "1.24": "v1.5.1"
   "1.23": "v1.5.1"
   "1.22": "v1.5.1"
-default_calico_version: "v3.25.0"
+default_calico_version: "v3.24.0"
 default_ingress_version: "v1.5.1"
 
 # 自定义 hosts 解析,ansible 会帮我们自动添加
@@ -456,7 +456,7 @@ k8s_ingress_version_map:
   "1.24": "v1.5.1"
   "1.23": "v1.5.1"
   "1.22": "v1.5.1"
-default_calico_version: "v3.25.0"
+default_calico_version: "v3.24.0"
 default_ingress_version: "v1.5.1"
 
 # 自定义 hosts 解析,ansible 会帮我们自动添加
