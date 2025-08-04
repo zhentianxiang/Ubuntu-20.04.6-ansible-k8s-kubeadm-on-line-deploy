@@ -2,9 +2,9 @@
 ansible_become: true
 ansible_become_method: sudo
 
-# 安装源配置
-docker_ce_repo: '"deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable"'
-docker_gpg_key: ' http://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg'
+# Ubuntu 20.04 安装源配置
+docker_gpg_key: "https://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg"
+docker_ce_repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://mirrors.aliyun.com/docker-ce/linux/ubuntu {{ ubuntu_codename }} stable"
 docker_ce: 'docker-ce=5:20.10.10~3-0~ubuntu-focal'
 docker_ce_cli: 'docker-ce-cli=5:20.10.10~3-0~ubuntu-focal'
 

@@ -1,4 +1,63 @@
 ---
+- name: 设置 Ubuntu 版本代号
+  set_fact:
+    ubuntu_codename: "{{ ansible_distribution_release }}"
+
+- name: 创建 keyrings 目录
+  become: yes
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: 清理旧 Docker 配置
+  become: yes
+  block:
+    - name: 删除旧版 docker 源文件
+      file:
+        path: /etc/apt/sources.list.d/docker.list
+        state: absent
+
+    - name: 删除旧 GPG 文件
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/trusted.gpg.d/docker.gpg
+        - /etc/apt/keyrings/docker.gpg
+      ignore_errors: yes
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: 下载 Docker GPG 密钥
+  become: yes
+  get_url:
+    url: "{{ docker_gpg_key }}"
+    dest: /tmp/docker.gpg
+    mode: '0644'
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: 转换 GPG 密钥格式
+  become: yes
+  shell: |
+    gpg --dearmor -o /etc/apt/keyrings/docker.gpg /tmp/docker.gpg
+  args:
+    creates: /etc/apt/keyrings/docker.gpg
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: 添加 Docker apt 源
+  become: yes
+  apt_repository:
+    repo: "{{ docker_ce_repo }}"
+    filename: docker
+    state: present
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: 更新 apt 缓存
+  become: yes
+  apt:
+    update_cache: yes
+  when: ansible_facts['os_family'] == "Debian"
 - name: Add docker-ce repository
   raw: "{{ item }}"
   with_items:
