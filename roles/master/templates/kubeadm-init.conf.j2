@@ -13,7 +13,7 @@ localAPIEndpoint:
   bindPort: 6443
 nodeRegistration:
   name: "{{ ansible_hostname }}"  # 动态获取当前主机名
-  criSocket: unix:///run/containerd/containerd.sock
+  criSocket: /var/run/dockershim.sock
   imagePullPolicy: IfNotPresent
   kubeletExtraArgs:
     cgroup-driver: "systemd"  # 指定 kubelet 使用 systemd 作为 Cgroup 驱动
