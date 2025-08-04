@@ -21,7 +21,7 @@ kube_gpg_key: "https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg"
 kube_repo: "deb [arch=amd64] https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main"
 ghproxy: 'https://ghfast.top'
 kube_version: '1.23.0-00'
-k8s_version: 'v1.28.0'
+k8s_version: 'v1.23.0'
 code_version: 'v1.23.0'
 tmp_dir: '/opt/k8s-install/join'
 docker_data_dir: '/var/lib/docker'
