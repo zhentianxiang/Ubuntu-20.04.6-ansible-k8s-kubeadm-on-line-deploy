@@ -105,7 +105,45 @@
         - ingress_version is defined
         - not ingress_file.stat.exists | default(false)
 
-    - name: 修改 ingress-nginx YAML 文件
+    - name: 拷贝替换镜像脚本到远程主机
+      copy:
+        src: replace_ingress_images.sh
+        dest: "{{ ingress_app }}/replace_ingress_images.sh"
+        mode: '0755'
+    
+    - name: 修改镜像地址为阿里云镜像
+      shell: |
+        set -e
+        yaml_file="{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml"
+    
+        echo "[INFO] 开始替换镜像地址: $yaml_file"
+    
+        # 初始替换
+        sed -E -i \
+          -e 's|registry.k8s.io/ingress-nginx/controller:([^@]*)(@sha256:[a-f0-9]+)?|registry.cn-hangzhou.aliyuncs.com/google_containers/ingress-nginx/controller:\1\2|g' \
+          -e 's|registry.k8s.io/ingress-nginx/kube-webhook-certgen:([^@]*)(@sha256:[a-f0-9]+)?|registry.cn-hangzhou.aliyuncs.com/google_containers/kube-webhook-certgen:\1\2|g' \
+          "$yaml_file"
+    
+        # 检查是否还有错误路径，做补救
+        if grep -q 'registry.cn-hangzhou.aliyuncs.com/google_containers/ingress-nginx/kube-webhook-certgen' "$yaml_file"; then
+          echo "[WARN] webhook-certgen 路径仍包含 ingress-nginx，执行补救替换..."
+          sed -i 's|registry.cn-hangzhou.aliyuncs.com/google_containers/ingress-nginx/kube-webhook-certgen|registry.cn-hangzhou.aliyuncs.com/google_containers/kube-webhook-certgen|g' "$yaml_file"
+        else
+          echo "[INFO] webhook-certgen 镜像路径已正确。"
+        fi
+      when:
+        - ingress_version is defined
+        - download_result is succeeded or ingress_file.stat.exists
+
+    - name: 打印替换后的镜像配置
+      shell: "grep 'image: registry.cn-hangzhou.aliyuncs.com' '{{ ingress_app }}/ingress-nginx-{{ ingress_version }}.yaml'"
+      register: grep_result
+    
+    - name: 输出镜像行
+      debug:
+        var: grep_result.stdout_lines
+
+    - name: 修改 ingress-nginx YAML 文件 开启 hostNetwork 网络模式并添加 label 标签
       shell: |
         export PATH=$PATH:/usr/local/bin
         awk '
