@@ -74,7 +74,6 @@
     - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
     - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
     - { name: 'fs.inotify.max_user_instances', value: '8192' }
-    - { name: 'vm.nr_hugepages', value: '1024' }
 
 - name: 重新加载 sysctl 以应用新设置
   command: sysctl -p
